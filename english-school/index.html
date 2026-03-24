@@ -7,29 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../styles/styles.css" />
+  <link rel="stylesheet" href="../english-school/src/styles/styles.css" />
 </head>
 <body>
   <main class="home">
     <section class="home-hero">
-      <header class="home-nav">
-        <div class="brand">
-          <span class="brand-mark"></span>
-          <span class="brand-text">TOTC</span>
-        </div>
-        <nav class="nav-links" aria-label="Primary">
-          <a href="#home">Home</a>
-          <a href="#courses">Courses</a>
-          <a href="#careers">Careers</a>
-          <a href="#blog">Blog</a>
-          <a href="#about">About Us</a>
-        </nav>
-        <div class="nav-actions">
-          <button class="btn btn-ghost">Login</button>
-          <button class="btn btn-light">Sign Up</button>
-        </div>
-      </header>
-
+      <div id="root"></div>
+      
       <div class="home-hero-body" id="home">
         <div class="home-hero-copy">
           <h1>
@@ -44,7 +28,7 @@
           <button class="btn btn-accent">Join for free</button>
         </div>
         <div class="home-hero-media" aria-hidden="true">
-          <div class="home-hero-image"><img src="../assets/images/home/student.png" alt="Student" /></div>
+          <div class="home-hero-image"><img src="/images/home/student2.png" alt="Student"/></div>
         </div>
       </div>
 
@@ -71,7 +55,8 @@
           <div class="icon badge-teal">📅</div>
           <h3>Easy Scheduling &amp; Attendance Tracking</h3>
           <p>
-            Schedule and reserve classrooms at one campus or multiple campuses.
+            Schedule and reserve classrooms at one campus o
+            r multiple campuses.
             Keep detailed records of student attendance.
           </p>
         </article>
@@ -95,6 +80,53 @@
         feedback all in one place.
       </p>
     </section>
+
+    <section class="features" id="features">
+      <div class="features-head">
+        <h2>Our <span>Features</span></h2>
+        <p>This very extraordinary feature, can make learning activities more efficient</p>
+      </div>
+
+      <div class="features-body">
+        <div class="feature-media" aria-hidden="true">
+          <div class="feature-image"><img src="/images/home/user-interface.png" alt="user-interface"/></div>
+        </div>
+
+        <div class="feature-copy">
+          <h3>A <span>user interface</span> designed for the classroom</h3>
+          <ul>
+            <li>
+              <span class="dot dot-purple"></span>
+              <p>Teachers don’t get lost in the grid view and have a dedicated Podium space.</p>
+            </li>
+            <li>
+              <span class="dot dot-orange"></span>
+              <p>TA’s and presenters can be moved to the front of the class.</p>
+            </li>
+            <li>
+              <span class="dot dot-indigo"></span>
+              <p>Teachers can easily see all students and class data at one time.</p>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+    <section class="features" id="features">
+      <div class="features-body">
+        <div class="feature-copy-2">
+          <h3>A <span>user interface</span> designed for the classroom</h3>
+          <p>
+            Class has a dynamic set of teaching tools built to be deployed and used during class.
+            Teachers can handout assignments in real-time for students to complete and submit.
+          </p>
+        </div>
+
+        <div class="feature-media" aria-hidden="true">
+          <div class="feature-image"><img src="/images/home/student2.png" alt="student2"/></div>
+        </div>
+      </div>
+    </section>
   </main>
+  <script type="module" src="/src/main.jsx"></script>
 </body>
-</html>
+</html>   
