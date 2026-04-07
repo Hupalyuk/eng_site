@@ -9,8 +9,8 @@ function Home() {
         <div className="home-hero-body" id="home">
           <div className="home-hero-copy">
             <h1>
-              <span className="home-eyebrow">Studying</span>
-              Online is now much easier
+              <span className="home-eyebrow">Studying </span>
+               Online is now much easier
             </h1>
             <p className="home-hero-desc">
               TOTC is an interesting platform that will teach you in a more interactive way.

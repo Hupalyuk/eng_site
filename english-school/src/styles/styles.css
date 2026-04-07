@@ -515,31 +515,6 @@ h1 {
   line-height: 1.5;
 }
 
-@media (min-width: 900px) {
-  .home-hero {
-    padding: 28px 48px;
-  }
-
-  .home-hero-body {
-    grid-template-columns: 1.1fr 0.9fr;
-  }
-
-  .home-hero-image {
-    width: 420px;
-  }
-
-  .home-hero-copy {
-    display: flex;
-    align-items: flex-start;
-    text-align: left;
-  }
-
-  .cloud-cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px;
-  }
-}
-
 @media (max-width: 760px) {
   .nav-links {
     display: none;
@@ -796,13 +771,6 @@ h1 {
   box-shadow: 0 8px 18px rgba(92, 90, 214, 0.35);
 }
 
-@media (min-width: 900px) {
-  .features-body {
-    grid-template-columns: 1.1fr 0.9fr;
-    gap: 40px;
-  }
-}
-
 /* Navbar (English School) */
 .site-nav {
   background: #4fb6b4;
@@ -894,17 +862,6 @@ h1 {
 
 .site-nav[data-open='true'] .mobile-panel {
   display: block;
-}
-
-@media (max-width: 860px) {
-  .site-nav .nav-links,
-  .site-nav .nav-actions {
-    display: none;
-  }
-
-  .burger {
-    display: flex;
-  }
 }
 
 /* Footer */
@@ -1007,7 +964,63 @@ h1 {
   color: #8f8ba6;
 }
 
+/*------------------- BLOG -------------------------- */
+
+.blog-page {
+  margin: 30px 24px;
+  text-align: center;
+}
+
+.blog-page h1 {
+  font-size: 36px;
+}
+
+.blog-page p {
+  line-height: 1.6;
+  font-size: 20px;
+}
+
+
+.blog-page img {
+  width: 100%;
+  max-width: 540px;
+  border-radius: 18px;
+}
+
+.blog-cell {
+  padding: 30px 0;
+}
+
+.blog-btn-header {
+  max-width: max-content;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 8px;
+  background: #5cc5c4;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+/* -------------------------------------------------- */
+
+@media (max-width: 860px) {
+  .site-nav .nav-links,
+  .site-nav .nav-actions {
+    display: none;
+  }
+
+  .burger {
+    display: flex;
+  }
+}
+
 @media (min-width: 900px) {
+
+  .features-body {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 40px;
+  }
+
   .footer-inner {
     gap: 26px;
   }
@@ -1015,4 +1028,42 @@ h1 {
   .newsletter-form input {
     width: 280px;
   }
+
+  .home-hero {
+    padding: 28px 48px;
+  }
+
+  .home-hero-body {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+
+  .home-hero-image {
+    width: 420px;
+  }
+
+  .home-hero-copy {
+    display: flex;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .cloud-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+/* ----------------- blog ------------------------- */
+  .blog-container {
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .blog-page {
+    margin: 60px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    text-align: start;
+  }
+
 }

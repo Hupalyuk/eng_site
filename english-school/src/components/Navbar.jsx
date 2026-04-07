@@ -1,11 +1,12 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 const NAV_ITEMS = [
-  { label: 'Home', href: '#home' },
-  { label: 'Courses', href: '#courses' },
-  { label: 'Careers', href: '#careers' },
-  { label: 'Blog', href: '#blog' },
-  { label: 'About Us', href: '#about' },
+  { label: 'Home', to: '/' },
+  { label: 'Courses', to: '/#courses' },
+  { label: 'Careers', to: '/#careers' },
+  { label: 'Blog', to: '/blog' },
+  { label: 'About Us', to: '/#about' },
 ];
 
 function Navbar() {
@@ -21,9 +22,9 @@ function Navbar() {
 
         <nav className="nav-links" aria-label="Primary">
           {NAV_ITEMS.map((item) => (
-            <a key={item.label} href={item.href}>
+            <Link key={item.label} to={item.to}>
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
@@ -48,9 +49,9 @@ function Navbar() {
       <div className="mobile-panel">
         <nav className="mobile-links" aria-label="Mobile">
           {NAV_ITEMS.map((item) => (
-            <a key={item.label} href={item.href} onClick={() => setOpen(false)}>
+            <Link key={item.label} to={item.to} onClick={() => setOpen(false)}>
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
         <div className="mobile-actions">
