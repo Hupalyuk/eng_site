@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const NAV_ITEMS = [
   { label: 'Home', to: '/' },
@@ -11,6 +12,7 @@ const NAV_ITEMS = [
 
 function Navbar() {
   const [open, setOpen] = useState(false);
+  const { user, loading } = useAuth();
 
   return (
     <header className="site-nav" data-open={open ? 'true' : 'false'}>
@@ -29,8 +31,21 @@ function Navbar() {
         </nav>
 
         <div className="nav-actions">
-          <button className="btn btn-ghost" type="button">Login</button>
-          <button className="btn btn-light" type="button">Sign Up</button>
+          {user ? (
+            <span className="nav-user">Hi, {user.name}</span>
+          ) : loading ? (
+            <span className="nav-user">Loading...</span>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost">
+                Login
+              </Link>
+
+              <Link to="/register" className="btn btn-light">
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -55,8 +70,29 @@ function Navbar() {
           ))}
         </nav>
         <div className="mobile-actions">
-          <button className="btn btn-ghost" type="button">Login</button>
-          <button className="btn btn-light" type="button">Sign Up</button>
+          {user ? (
+            <span className="nav-user">Hi, {user.name}</span>
+          ) : loading ? (
+            <span className="nav-user">Loading...</span>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="btn btn-ghost"
+                onClick={() => setOpen(false)}
+              >
+                Login
+              </Link>
+
+              <Link
+                to="/register"
+                className="btn btn-light"
+                onClick={() => setOpen(false)}
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

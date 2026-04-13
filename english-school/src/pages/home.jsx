@@ -103,8 +103,8 @@ function Home() {
       </section>
 
       <section className="features">
-        <div className="features-body">
-          <div className="feature-copy-2">
+        <div className="features-head">
+          <div className="feature-body">
             <h3>A <span>user interface</span> designed for the classroom</h3>
             <p>
               Class has a dynamic set of teaching tools built to be deployed and used during class.
@@ -112,7 +112,7 @@ function Home() {
             </p>
           </div>
 
-          <div className="feature-media" aria-hidden="true">
+          <div className="feature-media ada" aria-hidden="true">
             <div className="feature-image">
               <img src="/images/home/student2.png" alt="student2" />
             </div>
@@ -121,14 +121,14 @@ function Home() {
       </section>
 
       <section className="features">
-        <div className="features-body">
+        <div className="features-head">
           <div className="feature-media" aria-hidden="true">
             <div className="feature-image">
               <img src="/images/home/tests.png" alt="tests" />
             </div>
           </div>
 
-          <div className="feature-copy-2">
+          <div className="feature-body">
             <h3>Assessments <span>Quizzes</span>, Tests</h3>
             <p>
               Easily launch live assignments, quizzes, and tests.
@@ -139,8 +139,8 @@ function Home() {
       </section>
 
       <section className="features">
-        <div className="features-body">
-          <div className="feature-copy-2">
+        <div className="features-head">
+          <div className="feature-body">
             <h3><span>Class Management</span> Tools for Educators</h3>
             <p>
               Class provides tools to help run and manage the class such as Class Roster, Attendance, and more. 

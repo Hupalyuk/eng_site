@@ -3,17 +3,24 @@ import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
 import Home from "./pages/home.jsx";
 import Blog from "./pages/blog.jsx";
+import Login from "./pages/login.jsx";
+import Sign from "./pages/sign.jsx";
+import { AuthProvider } from "./context/AuthContext.jsx";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/blog" element={<Blog />} />
-      </Routes>
-      <Footer />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Sign />} />
+        </Routes>
+        <Footer />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
