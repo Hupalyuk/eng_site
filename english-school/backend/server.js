@@ -4,14 +4,21 @@ const session = require('express-session');
 const MySQLStoreFactory = require('express-mysql-session');
 const cors = require('cors');
 const helmet = require('helmet');
+const path = require('path');
 const { pool } = require('./db');
 const authRoutes = require('./routes/auth');
+const postsRoutes = require('./routes/posts');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const allowedOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 app.use(
@@ -57,6 +64,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/posts', postsRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

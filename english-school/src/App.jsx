@@ -5,6 +5,7 @@ import Home from "./pages/home.jsx";
 import Blog from "./pages/blog.jsx";
 import Login from "./pages/login.jsx";
 import Sign from "./pages/sign.jsx";
+import CreatePost from "./pages/create-post.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/create-post" element={<CreatePost />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Sign />} />
         </Routes>

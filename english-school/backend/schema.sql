@@ -1,6 +1,8 @@
 CREATE DATABASE IF NOT EXISTS english_school CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE english_school;
 
+SELECT * FROM english_school.posts;
+
 CREATE TABLE IF NOT EXISTS users (
   id INT NOT NULL AUTO_INCREMENT,
   role VARCHAR(120) NOT NULL,
@@ -11,10 +13,14 @@ CREATE TABLE IF NOT EXISTS users (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB;
 
-ALTER TABLE users 
-MODIFY role VARCHAR(20) NOT NULL DEFAULT 'user';
+CREATE TABLE IF NOT EXISTS posts (
+  id INT NOT NULL AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  content TEXT NOT NULL,
+  image_url VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  INDEX idx_posts_user_id (user_id),
+  CONSTRAINT fk_posts_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
-select * from users;
-
--- drop database english_school;
--- express-mysql-session will create its own table named `sessions` automatically.

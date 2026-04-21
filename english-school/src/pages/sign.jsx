@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import heroImg from "/D/eng_site/english-school/public/images/login/sign.png";
+
 
 const Register = () => {
   const navigate = useNavigate();
@@ -55,7 +55,7 @@ const Register = () => {
         <div className="hero" aria-hidden="true">
           <img
             className="hero-img"
-            src={heroImg}
+            src={"/images/login/sign.png"}
             alt="Hero image"
           />
         </div>
