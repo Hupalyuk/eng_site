@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 const NAV_ITEMS = [
   { label: 'Home', to: '/' },
-  { label: 'Courses', to: '/#courses' },
+  { label: 'Courses', to: '/courses' },
   { label: 'Careers', to: '/#careers' },
   { label: 'Blog', to: '/blog' },
   { label: 'About Us', to: '/#about' },

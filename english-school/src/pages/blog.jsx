@@ -49,16 +49,47 @@ const Blog = () => {
     return `${apiBase}${url}`;
   };
 
+  const deletePost = async (postId) => {
+    setError("");
+
+    const confirmed = window.confirm("Delete this post?");
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`${apiBase}/api/posts/${postId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const payload = await readJson(response);
+      if (!response.ok) {
+        throw new Error(payload?.error || "Failed to delete post.");
+      }
+      setPosts((prev) => prev.filter((post) => post.id !== postId));
+    } catch (err) {
+      setError(err.message || "Failed to delete post.");
+    }
+  };
+
+  const splitPostText = (text = "") => {
+    const normalized = String(text).replace(/\r\n/g, "\n");
+    const [rawTitle = "", ...rest] = normalized.split("\n");
+    const title = rawTitle.replace(/\s+/g, " ").trim();
+    const description = rest.join("\n").replace(/\s+/g, " ").trim();
+    return { title, description };
+  };
+
   const getTitle = (text = "") => {
-    const clean = text.replace(/\s+/g, " ").trim();
-    if (!clean) return "Untitled post";
-    return clean.length > 64 ? `${clean.slice(0, 64)}...` : clean;
+    const { title, description } = splitPostText(text);
+    const base = title || description;
+    if (!base) return "Untitled post";
+    return base.length > 64 ? `${base.slice(0, 64)}...` : base;
   };
 
   const getExcerpt = (text = "") => {
-    const clean = text.replace(/\s+/g, " ").trim();
-    if (!clean) return "No description yet.";
-    return clean.length > 140 ? `${clean.slice(0, 140)}...` : clean;
+    const { title, description } = splitPostText(text);
+    const base = description || title;
+    if (!base) return "No description yet.";
+    return base.length > 140 ? `${base.slice(0, 140)}...` : base;
   };
 
   const getInitials = (name = "") => {
@@ -109,6 +140,7 @@ const Blog = () => {
               const excerpt = getExcerpt(post.content);
               const initials = getInitials(post.user_name);
               const dateLabel = new Date(post.created_at).toLocaleDateString();
+              const isOwner = Boolean(user && post.user_id === user.id);
 
               return (
                 <article key={post.id} className="post-card">
@@ -134,9 +166,24 @@ const Blog = () => {
                     <p className="post-excerpt">{excerpt}</p>
 
                     <div className="post-footer">
-                      <button className="link-btn" type="button">
-                        Read more
-                      </button>
+                      {isOwner ? (
+                        <div className="post-owner-actions">
+                          <Link className="btn btn-light btn-sm" to={`/edit-post/${post.id}`}>
+                            Edit
+                          </Link>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            type="button"
+                            onClick={() => deletePost(post.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : (
+                        <button className="link-btn" type="button">
+                          Read more
+                        </button>
+                      )}
                       <span className="post-meta-small">{dateLabel}</span>
                     </div>
                   </div>

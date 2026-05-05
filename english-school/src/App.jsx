@@ -6,6 +6,8 @@ import Blog from "./pages/blog.jsx";
 import Login from "./pages/login.jsx";
 import Sign from "./pages/sign.jsx";
 import CreatePost from "./pages/create-post.jsx";
+import EditPost from "./pages/edit-post.jsx";
+import Courses from "./pages/courses.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 
 function App() {
@@ -15,8 +17,10 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/courses" element={<Courses />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/create-post" element={<CreatePost />} />
+          <Route path="/edit-post/:id" element={<EditPost />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Sign />} />
         </Routes>

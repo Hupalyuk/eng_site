@@ -76,7 +76,7 @@ router.post('/', requireAuth, upload.single('image'), async (req, res, next) => 
 router.put('/:id', requireAuth, upload.single('image'), async (req, res, next) => {
   try {
     const postId = Number(req.params.id);
-    const { content } = req.body;
+    const { content, remove_image: removeImage } = req.body;
 
     if (!postId) {
       return res.status(400).json({ error: 'Invalid post id.' });
@@ -99,7 +99,10 @@ router.put('/:id', requireAuth, upload.single('image'), async (req, res, next) =
       return res.status(403).json({ error: 'Forbidden.' });
     }
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : rows[0].image_url;
+    const shouldRemoveImage =
+      !req.file && (removeImage === true || removeImage === 'true' || removeImage === '1');
+
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : shouldRemoveImage ? null : rows[0].image_url;
 
     await pool.query(
       'UPDATE posts SET content = ?, image_url = ? WHERE id = ?',
