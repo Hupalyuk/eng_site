@@ -5,9 +5,10 @@ const MySQLStoreFactory = require('express-mysql-session');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
-const { pool } = require('./db');
+const { pool, ensureCourseEnrollmentTables } = require('./db');
 const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
+const enrollmentsRoutes = require('./routes/enrollments');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -65,6 +66,7 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
+app.use('/api/enrollments', enrollmentsRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
@@ -73,6 +75,10 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Auth server running on http://localhost:${PORT}`);
+});
+
+ensureCourseEnrollmentTables().catch((error) => {
+  console.error('Failed to ensure course enrollment tables:', error);
 });
 
 

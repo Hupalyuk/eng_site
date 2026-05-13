@@ -1,6 +1,7 @@
-import React, { useId, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getCourseById } from "../data/courses.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const DAYS = [
   { id: "mon", label: "Пн" },
@@ -16,11 +17,23 @@ const TIMES = ["09:00", "11:00", "13:00", "15:00", "17:00", "19:00"];
 
 const normalizePhone = (value) => value.replace(/[^\d+]/g, "").slice(0, 16);
 
+function loadDraft(storageKey) {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 function CourseEnroll() {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  const { user, loading } = useAuth();
 
   const course = useMemo(() => getCourseById(courseId), [courseId]);
+  const storageKey = useMemo(() => `enrollDraft:${courseId || ""}`, [courseId]);
 
   const nameId = useId();
   const phoneId = useId();
@@ -34,22 +47,71 @@ function CourseEnroll() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [groupName, setGroupName] = useState("");
 
-  const toggleSetValue = (setter) => (value) => {
-    setter((prev) => {
+  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+
+  useEffect(() => {
+    const draft = loadDraft(storageKey);
+    if (!draft) return;
+
+    if (typeof draft.fullName === "string") setFullName(draft.fullName);
+    if (typeof draft.phone === "string") setPhone(draft.phone);
+    if (typeof draft.email === "string") setEmail(draft.email);
+    if (Array.isArray(draft.days)) setDays(new Set(draft.days.slice(0, 2)));
+    if (Array.isArray(draft.times)) setTimes(new Set(draft.times.slice(0, 1)));
+  }, [storageKey]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          fullName,
+          phone,
+          email,
+          days: Array.from(days),
+          times: Array.from(times),
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }, [storageKey, fullName, phone, email, days, times]);
+
+  const toggleDay = (dayId) => {
+    setError("");
+    setDays((prev) => {
       const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
+      if (next.has(dayId)) {
+        next.delete(dayId);
+        return next;
+      }
+      if (next.size >= 2) {
+        setError("Можна обрати тільки 2 дні.");
+        return prev;
+      }
+      next.add(dayId);
       return next;
     });
   };
 
-  const toggleDay = toggleSetValue(setDays);
-  const toggleTime = toggleSetValue(setTimes);
+  const toggleTime = (timeValue) => {
+    setError("");
+    setTimes((prev) => {
+      if (prev.has(timeValue)) return new Set();
+      return new Set([timeValue]);
+    });
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
+
+    if (!user) {
+      setError("Щоб подати заявку на курс, потрібно увійти в акаунт.");
+      return;
+    }
 
     if (!course) {
       setError("Course not found.");
@@ -71,22 +133,45 @@ function CourseEnroll() {
       return;
     }
 
-    if (days.size === 0) {
-      setError("Оберіть дні занять.");
+    if (days.size !== 2) {
+      setError("Оберіть рівно 2 дні занять.");
       return;
     }
 
-    if (times.size === 0) {
-      setError("Оберіть зручний час.");
+    if (times.size !== 1) {
+      setError("Оберіть один вільний час.");
       return;
     }
 
     try {
       setSubmitting(true);
 
-      // No backend endpoint yet — simulate success.
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const response = await fetch(`${apiBase}/api/enrollments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          courseId: course.id,
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          email: email.trim(),
+          days: Array.from(days),
+          times: Array.from(times),
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || "Не вдалося відправити заявку. Спробуйте ще раз.");
+      }
+
+      setGroupName(payload?.group?.name || "");
       setDone(true);
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        // ignore
+      }
     } catch (err) {
       setError(err?.message || "Не вдалося відправити заявку. Спробуйте ще раз.");
     } finally {
@@ -105,6 +190,26 @@ function CourseEnroll() {
             </Link>
           </div>
           <p className="post-hint">Спробуйте повернутися на сторінку курсів.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="page">
+        <section className="blog-feed">
+          <div className="blog-feed-header">
+            <h2>Реєстрація на курс</h2>
+            <Link className="btn btn-light" to="/login">
+              Увійти
+            </Link>
+          </div>
+          {loading ? (
+            <p className="post-hint">Перевіряємо акаунт...</p>
+          ) : (
+            <p className="post-hint">Щоб подати заявку на курс, потрібно увійти в акаунт.</p>
+          )}
         </section>
       </main>
     );
@@ -140,7 +245,15 @@ function CourseEnroll() {
               {done ? (
                 <div className="enroll-done">
                   <h2>Заявка відправлена</h2>
-                  <p>Ми зв'яжемося з вами найближчим часом, щоб підтвердити деталі.</p>
+                  <p>
+                    Ми зв'яжемося з вами найближчим часом, щоб підтвердити деталі.
+                    {groupName ? (
+                      <>
+                        {" "}
+                        Ваша група: <strong className="enroll-group-name">{groupName}</strong>.
+                      </>
+                    ) : null}
+                  </p>
                   <div className="enroll-done-actions">
                     <button className="btn btn-accent" type="button" onClick={() => navigate("/courses")}>
                       Повернутися до курсів
@@ -150,6 +263,7 @@ function CourseEnroll() {
                       type="button"
                       onClick={() => {
                         setDone(false);
+                        setGroupName("");
                         setFullName("");
                         setPhone("");
                         setEmail("");
@@ -202,7 +316,7 @@ function CourseEnroll() {
                   </label>
 
                   <div className="enroll-picker">
-                    <span className="enroll-label">Оберіть дні (Пн–Нд)</span>
+                    <span className="enroll-label">Оберіть 2 дні (Пн–Нд)</span>
                     <div className="enroll-chips" role="group" aria-label="Days picker">
                       {DAYS.map((day) => (
                         <button
@@ -218,7 +332,7 @@ function CourseEnroll() {
                   </div>
 
                   <div className="enroll-picker">
-                    <span className="enroll-label">Вільні часи</span>
+                    <span className="enroll-label">Оберіть 1 вільний час</span>
                     <div className="enroll-chips" role="group" aria-label="Times picker">
                       {TIMES.map((time) => (
                         <button
@@ -231,7 +345,7 @@ function CourseEnroll() {
                         </button>
                       ))}
                     </div>
-                    <p className="enroll-help">Можна обрати кілька варіантів — ми підтвердимо найкращий.</p>
+                    <p className="enroll-help">Час можна обрати лише один — ми підтвердимо запис.</p>
                   </div>
 
                   {error && <p className="form-error">{error}</p>}
@@ -250,3 +364,4 @@ function CourseEnroll() {
 }
 
 export default CourseEnroll;
+

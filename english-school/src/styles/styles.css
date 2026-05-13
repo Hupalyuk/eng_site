@@ -2115,6 +2115,10 @@ textarea {
   line-height: 1.6;
 }
 
+.enroll-group-name {
+  color: #0f172a;
+}
+
 .enroll-done-actions {
   display: flex;
   flex-wrap: wrap;
