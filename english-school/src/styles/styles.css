@@ -1948,3 +1948,190 @@ textarea {
     padding: 34px 40px;
   }
 }
+
+/* Course enroll */
+.enroll-page {
+  background:
+    radial-gradient(1200px 700px at 12% 18%, rgba(94, 169, 255, 0.14) 0%, transparent 60%),
+    radial-gradient(900px 700px at 85% 30%, rgba(121, 201, 198, 0.18) 0%, transparent 55%),
+    #ffffff;
+  min-height: 100svh;
+}
+
+.enroll-hero {
+  padding: 64px 18px 70px;
+}
+
+.enroll-hero-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.enroll-breadcrumbs {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.enroll-link {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.enroll-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.enroll-eyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #3b82f6;
+}
+
+.enroll-title {
+  margin: 0 0 10px;
+  font-size: clamp(30px, 3.4vw, 44px);
+  line-height: 1.08;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.enroll-subtitle {
+  margin: 0;
+  max-width: 560px;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.enroll-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.enroll-badge {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 232, 240, 1);
+  background: rgba(255, 255, 255, 0.85);
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.enroll-badge.is-strong {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: #1d4ed8;
+}
+
+.enroll-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(226, 232, 240, 1);
+  border-radius: 22px;
+  box-shadow: 0 26px 60px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.enroll-form {
+  padding: 18px 18px 20px;
+  display: grid;
+  gap: 14px;
+}
+
+.enroll-form-title {
+  margin: 2px 0 6px;
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.enroll-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.enroll-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.enroll-chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.enroll-chip {
+  border: 1px solid rgba(226, 232, 240, 1);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 9px 12px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 12px;
+  color: #334155;
+}
+
+.enroll-chip-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.enroll-chip.is-active {
+  background: rgba(37, 99, 235, 1);
+  border-color: rgba(37, 99, 235, 1);
+  color: #ffffff;
+}
+
+.enroll-help {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.enroll-done {
+  padding: 18px 18px 20px;
+}
+
+.enroll-done h2 {
+  margin: 4px 0 10px;
+  font-size: 20px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.enroll-done p {
+  margin: 0 0 16px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.enroll-done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (min-width: 900px) {
+  .enroll-hero-grid {
+    grid-template-columns: 1fr 420px;
+    gap: 22px;
+  }
+
+  .enroll-form {
+    padding: 22px 22px 24px;
+  }
+
+  .enroll-done {
+    padding: 22px 22px 24px;
+  }
+}
