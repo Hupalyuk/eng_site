@@ -1,26 +1,38 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+function toPgConfigFromUrl(connectionString) {
+  const parsed = new URL(connectionString);
+  const database = parsed.pathname.replace(/^\//, '');
+  return {
+    host: parsed.hostname,
+    port: Number(parsed.port || 5432),
+    user: decodeURIComponent(parsed.username || ''),
+    password: decodeURIComponent(parsed.password || ''),
+    database,
+  };
+}
+
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 const shouldUseSsl =
   process.env.PGSSLMODE === 'require' ||
   (hasDatabaseUrl && process.env.PGSSLMODE !== 'disable');
 
-const pool = hasDatabaseUrl
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
-      max: 10,
-    })
-  : new Pool({
+const baseConfig = hasDatabaseUrl
+  ? toPgConfigFromUrl(process.env.DATABASE_URL)
+  : {
       host: process.env.PGHOST || process.env.DB_HOST || 'localhost',
       user: process.env.PGUSER || process.env.DB_USER || 'postgres',
       password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
       database: process.env.PGDATABASE || process.env.DB_NAME || 'english_school',
       port: Number(process.env.PGPORT || process.env.DB_PORT || 5432),
-      ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
-      max: 10,
-    });
+    };
+
+const pool = new Pool({
+  ...baseConfig,
+  ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
+  max: 10,
+});
 
 async function ensureCourseEnrollmentTables() {
   await pool.query(`
@@ -87,4 +99,3 @@ async function ensureCourseEnrollmentTables() {
 }
 
 module.exports = { pool, ensureCourseEnrollmentTables };
-
