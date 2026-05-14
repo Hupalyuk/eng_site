@@ -23,6 +23,7 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const normalizeOrigin = (value = '') => String(value).trim().replace(/\/+$/, '');
+const allowAllOrigins = process.env.CORS_ALLOW_ALL === 'true';
 
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173')
   .split(',')
@@ -32,6 +33,7 @@ const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173')
 const isOriginAllowed = (origin) => {
   const normalized = normalizeOrigin(origin);
   if (!normalized) return true;
+  if (allowAllOrigins) return true;
 
   return allowedOrigins.some((rule) => {
     if (rule.startsWith('*.')) {
@@ -49,10 +51,10 @@ const corsOptions = {
       callback(null, true);
       return;
     }
-
-    callback(new Error(`CORS blocked for origin: ${origin}`));
+    callback(null, false);
   },
   credentials: true,
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
