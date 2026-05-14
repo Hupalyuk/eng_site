@@ -29,3 +29,7 @@
 - Cookies are `httpOnly`, `sameSite=lax`, and `secure` in production.
 - CORS allows `FRONTEND_ORIGIN` with credentials.
 - If `DATABASE_URL` is provided, backend connects through it first.
+- `FRONTEND_ORIGIN` supports multiple domains separated by comma.
+- For cross-domain frontend/backend in production use:
+  - `SESSION_SAME_SITE=none`
+  - `SESSION_SECURE=true`

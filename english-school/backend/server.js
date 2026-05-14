@@ -12,6 +12,8 @@ const enrollmentsRoutes = require('./routes/enrollments');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+app.set('trust proxy', 1);
+
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -20,10 +22,26 @@ app.use(
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-const allowedOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error('CORS blocked for this origin'));
+    },
     credentials: true,
   })
 );
@@ -35,6 +53,9 @@ const sessionStore = new PgSession({
   createTableIfMissing: true,
 });
 
+const sameSite = process.env.SESSION_SAME_SITE || (process.env.NODE_ENV === 'production' ? 'none' : 'lax');
+const secureCookie = process.env.SESSION_SECURE === 'true' || process.env.NODE_ENV === 'production';
+
 app.use(
   session({
     key: process.env.SESSION_COOKIE_NAME || 'sid',
@@ -44,8 +65,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite,
+      secure: secureCookie,
       maxAge: 1000 * 60 * 60 * 24 * 7,
     },
   })

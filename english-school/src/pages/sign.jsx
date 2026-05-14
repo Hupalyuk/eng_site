@@ -15,6 +15,15 @@ const Register = () => {
 
   const apiBase = getApiBase();
 
+  const readJsonSafe = async (response) => {
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { error: text || `HTTP ${response.status}` };
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
@@ -33,7 +42,7 @@ const Register = () => {
         body: JSON.stringify({ name, email, password }),
       });
 
-      const payload = await response.json();
+      const payload = await readJsonSafe(response);
       if (!response.ok) {
         setError(payload?.error || "Registration failed.");
         return;
