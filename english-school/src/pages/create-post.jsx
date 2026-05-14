@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getApiBase } from "../lib/apiBase.js";
 
 const CreatePost = () => {
   const { user } = useAuth();
@@ -17,7 +18,7 @@ const CreatePost = () => {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+  const apiBase = getApiBase();
 
   const readJson = async (response) => {
     const contentType = response.headers.get("content-type") || "";

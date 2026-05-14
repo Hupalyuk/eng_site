@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { getApiBase } from "../lib/apiBase.js";
 
 const AuthContext = createContext({
   user: null,
@@ -10,7 +11,7 @@ const AuthContext = createContext({
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+  const apiBase = getApiBase();
 
   const refreshUser = useCallback(async () => {
     try {

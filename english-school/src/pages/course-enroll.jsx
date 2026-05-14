@@ -2,6 +2,7 @@ import React, { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getCourseById } from "../data/courses.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getApiBase } from "../lib/apiBase.js";
 
 const DAYS = [
   { id: "mon", label: "Пн" },
@@ -49,7 +50,7 @@ function CourseEnroll() {
   const [done, setDone] = useState(false);
   const [groupName, setGroupName] = useState("");
 
-  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+  const apiBase = getApiBase();
 
   useEffect(() => {
     const draft = loadDraft(storageKey);
@@ -364,4 +365,3 @@ function CourseEnroll() {
 }
 
 export default CourseEnroll;
-

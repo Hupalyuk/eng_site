@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getApiBase } from "../lib/apiBase.js";
 
 const splitPostText = (text = "") => {
   const normalized = String(text).replace(/\r\n/g, "\n");
@@ -32,7 +33,7 @@ const EditPost = () => {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+  const apiBase = getApiBase();
 
   const readJson = async (response) => {
     const contentType = response.headers.get("content-type") || "";

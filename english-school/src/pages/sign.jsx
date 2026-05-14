@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getApiBase } from "../lib/apiBase.js";
 
 
 const Register = () => {
@@ -12,7 +13,7 @@ const Register = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+  const apiBase = getApiBase();
 
   const handleSubmit = async (event) => {
     event.preventDefault();

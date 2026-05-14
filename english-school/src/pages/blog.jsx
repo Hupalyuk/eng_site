@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getApiBase } from "../lib/apiBase.js";
 
 const Blog = () => {
   const { user } = useAuth();
@@ -8,7 +9,7 @@ const Blog = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const apiBase = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+  const apiBase = getApiBase();
 
   const readJson = async (response) => {
     const contentType = response.headers.get("content-type") || "";
