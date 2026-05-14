@@ -1,15 +1,6 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    require: true,
-    rejectUnauthorized: false
-  }
-});
-
-
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
 const shouldUseSsl =
   process.env.PGSSLMODE === 'require' ||
