@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
-const MySQLStoreFactory = require('express-mysql-session');
 const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
@@ -29,15 +28,12 @@ app.use(
   })
 );
 
-const MySQLStore = MySQLStoreFactory(session);
-const sessionStore = new MySQLStore(
-  {
-    clearExpired: true,
-    checkExpirationInterval: 60 * 1000,
-    expiration: 1000 * 60 * 60 * 24 * 7,
-  },
-  pool
-);
+const PgSession = require('connect-pg-simple')(session);
+const sessionStore = new PgSession({
+  pool,
+  tableName: process.env.SESSION_TABLE_NAME || 'session',
+  createTableIfMissing: true,
+});
 
 app.use(
   session({
@@ -80,7 +76,3 @@ app.listen(PORT, () => {
 ensureCourseEnrollmentTables().catch((error) => {
   console.error('Failed to ensure course enrollment tables:', error);
 });
-
-
-console.log("DB_USER:", process.env.DB_USER);
-console.log("DB_PASSWORD:", process.env.DB_PASSWORD);

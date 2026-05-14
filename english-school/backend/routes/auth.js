@@ -13,19 +13,20 @@ router.post('/register', async (req, res, next) => {
       return res.status(400).json({ error: 'Name, email, and password are required.' });
     }
 
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1 LIMIT 1', [email]);
+    if (existing.rows.length > 0) {
       return res.status(409).json({ error: 'Email already registered.' });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const [result] = await pool.query(
-      'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)',
+    const result = await pool.query(
+      "INSERT INTO users (role, name, email, password_hash) VALUES ('student', $1, $2, $3) RETURNING id",
       [name, email, passwordHash]
     );
 
-    req.session.userId = result.insertId;
-    res.status(201).json({ id: result.insertId, name, email });
+    const userId = result.rows[0].id;
+    req.session.userId = userId;
+    res.status(201).json({ id: userId, name, email });
   } catch (error) {
     next(error);
   }
@@ -39,16 +40,16 @@ router.post('/login', async (req, res, next) => {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
-    const [rows] = await pool.query(
-      'SELECT id, name, email, password_hash FROM users WHERE email = ? LIMIT 1',
+    const result = await pool.query(
+      'SELECT id, name, email, password_hash FROM users WHERE email = $1 LIMIT 1',
       [email]
     );
 
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid credentials.' });
     }
 
-    const user = rows[0];
+    const user = result.rows[0];
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid credentials.' });
@@ -73,16 +74,15 @@ router.post('/logout', (req, res, next) => {
 
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT id, name, email FROM users WHERE id = ? LIMIT 1',
-      [req.session.userId]
-    );
+    const result = await pool.query('SELECT id, name, email FROM users WHERE id = $1 LIMIT 1', [
+      req.session.userId,
+    ]);
 
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    res.json(rows[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     next(error);
   }

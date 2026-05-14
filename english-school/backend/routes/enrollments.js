@@ -23,7 +23,7 @@ const formatGroupName = (courseCode, groupNumber, year2) => {
 };
 
 router.post('/', requireAuth, async (req, res, next) => {
-  let connection;
+  let client;
   try {
     const { courseId, fullName, phone, email, days, times } = req.body || {};
 
@@ -56,13 +56,13 @@ router.post('/', requireAuth, async (req, res, next) => {
 
     const year2 = toYear2(new Date());
 
-    connection = await pool.getConnection();
-    await connection.beginTransaction();
+    client = await pool.connect();
+    await client.query('BEGIN');
 
-    const [groups] = await connection.query(
+    const groupsResult = await client.query(
       `SELECT id, group_number, name, member_count
        FROM course_groups
-       WHERE course_code = ? AND year = ? AND days_key = ? AND times_key = ? AND member_count < 5
+       WHERE course_code = $1 AND year = $2 AND days_key = $3 AND times_key = $4 AND member_count < 5
        ORDER BY group_number ASC
        LIMIT 1
        FOR UPDATE`,
@@ -72,63 +72,67 @@ router.post('/', requireAuth, async (req, res, next) => {
     let groupId;
     let groupName;
 
-    if (groups.length > 0) {
-      groupId = groups[0].id;
-      groupName = groups[0].name;
+    if (groupsResult.rows.length > 0) {
+      groupId = groupsResult.rows[0].id;
+      groupName = groupsResult.rows[0].name;
     } else {
-      const [maxRows] = await connection.query(
-        `SELECT COALESCE(MAX(group_number), 0) AS max_number
+      const lastGroupResult = await client.query(
+        `SELECT group_number
          FROM course_groups
-         WHERE course_code = ? AND year = ?
+         WHERE course_code = $1 AND year = $2
+         ORDER BY group_number DESC
+         LIMIT 1
          FOR UPDATE`,
         [courseCode, year2]
       );
 
-      const nextNumber = Number(maxRows?.[0]?.max_number || 0) + 1;
+      const lastNumber = Number(lastGroupResult?.rows?.[0]?.group_number || 0);
+      const nextNumber = lastNumber + 1;
       groupName = formatGroupName(courseCode, nextNumber, year2);
 
-      const [insertGroupResult] = await connection.query(
+      const insertGroupResult = await client.query(
         `INSERT INTO course_groups (course_code, year, group_number, name, days_key, times_key, member_count)
-         VALUES (?, ?, ?, ?, ?, ?, 0)`,
+         VALUES ($1, $2, $3, $4, $5, $6, 0)
+         RETURNING id`,
         [courseCode, year2, nextNumber, groupName, daysKey, timesKey]
       );
 
-      groupId = insertGroupResult.insertId;
+      groupId = insertGroupResult.rows[0].id;
     }
 
-    await connection.query(
+    await client.query(
       `INSERT INTO course_group_members (group_id, full_name, phone, email)
-       VALUES (?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4)`,
       [groupId, safeName, safePhone, safeEmail]
     );
 
-    const [updateResult] = await connection.query(
+    const updateResult = await client.query(
       `UPDATE course_groups
        SET member_count = member_count + 1
-       WHERE id = ? AND member_count < 5`,
+       WHERE id = $1 AND member_count < 5`,
       [groupId]
     );
 
-    if (updateResult.affectedRows !== 1) {
+    if (updateResult.rowCount !== 1) {
       throw new Error('Group is full. Please try again.');
     }
 
-    await connection.commit();
+    await client.query('COMMIT');
     res.status(201).json({
       ok: true,
       group: { id: groupId, name: groupName, course: courseCode.toUpperCase(), year: year2 },
     });
   } catch (error) {
-    if (connection) {
+    if (client) {
       try {
-        await connection.rollback();
+        await client.query('ROLLBACK');
       } catch {
         // ignore
       }
     }
     next(error);
   } finally {
-    if (connection) connection.release();
+    if (client) client.release();
   }
 });
 

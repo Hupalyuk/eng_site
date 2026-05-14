@@ -1,49 +1,90 @@
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'english_school',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+const shouldUseSsl =
+  process.env.PGSSLMODE === 'require' ||
+  (hasDatabaseUrl && process.env.PGSSLMODE !== 'disable');
+
+const pool = hasDatabaseUrl
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
+      max: 10,
+    })
+  : new Pool({
+      host: process.env.PGHOST || process.env.DB_HOST || 'localhost',
+      user: process.env.PGUSER || process.env.DB_USER || 'postgres',
+      password: process.env.PGPASSWORD || process.env.DB_PASSWORD || '',
+      database: process.env.PGDATABASE || process.env.DB_NAME || 'english_school',
+      port: Number(process.env.PGPORT || process.env.DB_PORT || 5432),
+      ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
+      max: 10,
+    });
 
 async function ensureCourseEnrollmentTables() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id BIGSERIAL PRIMARY KEY,
+      role VARCHAR(120) NOT NULL DEFAULT 'student',
+      name VARCHAR(120) NOT NULL,
+      email VARCHAR(190) NOT NULL UNIQUE,
+      password_hash VARCHAR(255) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS posts (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      image_url VARCHAR(255),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_posts_user_id
+    ON posts (user_id);
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS course_groups (
-      id INT NOT NULL AUTO_INCREMENT,
+      id BIGSERIAL PRIMARY KEY,
       course_code VARCHAR(32) NOT NULL,
       year SMALLINT NOT NULL,
-      group_number INT NOT NULL,
-      name VARCHAR(64) NOT NULL,
+      group_number INTEGER NOT NULL,
+      name VARCHAR(64) NOT NULL UNIQUE,
       days_key VARCHAR(64) NOT NULL,
       times_key VARCHAR(128) NOT NULL,
-      member_count INT NOT NULL DEFAULT 0,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (id),
-      UNIQUE KEY uq_course_groups_name (name),
-      UNIQUE KEY uq_course_groups_course_year_number (course_code, year, group_number),
-      INDEX idx_course_groups_schedule (course_code, year, days_key, times_key, member_count)
-    ) ENGINE=InnoDB;
+      member_count INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (course_code, year, group_number)
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_course_groups_schedule
+    ON course_groups (course_code, year, days_key, times_key, member_count);
   `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS course_group_members (
-      id INT NOT NULL AUTO_INCREMENT,
-      group_id INT NOT NULL,
+      id BIGSERIAL PRIMARY KEY,
+      group_id BIGINT NOT NULL REFERENCES course_groups(id) ON DELETE CASCADE,
       full_name VARCHAR(190) NOT NULL,
       phone VARCHAR(32) NOT NULL,
       email VARCHAR(190) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY (id),
-      INDEX idx_course_group_members_group_id (group_id),
-      CONSTRAINT fk_course_group_members_group_id
-        FOREIGN KEY (group_id) REFERENCES course_groups(id) ON DELETE CASCADE
-    ) ENGINE=InnoDB;
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_course_group_members_group_id
+    ON course_group_members (group_id);
   `);
 }
 
 module.exports = { pool, ensureCourseEnrollmentTables };
+
