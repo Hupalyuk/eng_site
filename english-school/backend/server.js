@@ -22,29 +22,41 @@ app.use(
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+const normalizeOrigin = (value = '') => String(value).trim().replace(/\/+$/, '');
+
 const allowedOrigins = (process.env.FRONTEND_ORIGIN || 'http://localhost:5173')
   .split(',')
-  .map((value) => value.trim())
+  .map((value) => normalizeOrigin(value))
   .filter(Boolean);
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
+const isOriginAllowed = (origin) => {
+  const normalized = normalizeOrigin(origin);
+  if (!normalized) return true;
 
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
+  return allowedOrigins.some((rule) => {
+    if (rule.startsWith('*.')) {
+      const domain = rule.slice(2);
+      return normalized.endsWith(`.${domain}`);
+    }
 
-      callback(new Error('CORS blocked for this origin'));
-    },
-    credentials: true,
-  })
-);
+    return normalized === rule;
+  });
+};
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 const PgSession = require('connect-pg-simple')(session);
 const sessionStore = new PgSession({
