@@ -8,6 +8,7 @@ const { pool, ensureCourseEnrollmentTables } = require('./db');
 const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
 const enrollmentsRoutes = require('./routes/enrollments');
+const classRoutes = require('./routes/class');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -98,6 +99,7 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
 app.use('/api/enrollments', enrollmentsRoutes);
+app.use('/api/class', classRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

@@ -22,7 +22,7 @@
         </div>
 
         <div className="footer-links">
-          <a href="#careers">Careers</a>
+          <a href="/class">Class</a>
           <span>|</span>
           <a href="#privacy">Privacy Policy</a>
           <span>|</span>

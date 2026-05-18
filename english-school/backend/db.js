@@ -68,12 +68,24 @@ async function ensureCourseEnrollmentTables() {
       year SMALLINT NOT NULL,
       group_number INTEGER NOT NULL,
       name VARCHAR(64) NOT NULL UNIQUE,
+      meet_link TEXT,
+      meet_space_name TEXT,
       days_key VARCHAR(64) NOT NULL,
       times_key VARCHAR(128) NOT NULL,
       member_count INTEGER NOT NULL DEFAULT 0,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE (course_code, year, group_number)
     );
+  `);
+
+  await pool.query(`
+    ALTER TABLE course_groups
+    ADD COLUMN IF NOT EXISTS meet_link TEXT;
+  `);
+
+  await pool.query(`
+    ALTER TABLE course_groups
+    ADD COLUMN IF NOT EXISTS meet_space_name TEXT;
   `);
 
   await pool.query(`
@@ -85,6 +97,7 @@ async function ensureCourseEnrollmentTables() {
     CREATE TABLE IF NOT EXISTS course_group_members (
       id BIGSERIAL PRIMARY KEY,
       group_id BIGINT NOT NULL REFERENCES course_groups(id) ON DELETE CASCADE,
+      user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
       full_name VARCHAR(190) NOT NULL,
       phone VARCHAR(32) NOT NULL,
       email VARCHAR(190) NOT NULL,
@@ -93,8 +106,18 @@ async function ensureCourseEnrollmentTables() {
   `);
 
   await pool.query(`
+    ALTER TABLE course_group_members
+    ADD COLUMN IF NOT EXISTS user_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
+  `);
+
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_course_group_members_group_id
     ON course_group_members (group_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_course_group_members_user_id
+    ON course_group_members (user_id);
   `);
 }
 

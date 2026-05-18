@@ -9,6 +9,7 @@ import CreatePost from "./pages/create-post.jsx";
 import EditPost from "./pages/edit-post.jsx";
 import Courses from "./pages/courses.jsx";
 import CourseEnroll from "./pages/course-enroll.jsx";
+import ClassPage from "./pages/class.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/:courseId/enroll" element={<CourseEnroll />} />
+          <Route path="/class" element={<ClassPage />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/create-post" element={<CreatePost />} />
           <Route path="/edit-post/:id" element={<EditPost />} />

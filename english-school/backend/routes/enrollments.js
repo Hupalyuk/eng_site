@@ -101,9 +101,9 @@ router.post('/', requireAuth, async (req, res, next) => {
     }
 
     await client.query(
-      `INSERT INTO course_group_members (group_id, full_name, phone, email)
-       VALUES ($1, $2, $3, $4)`,
-      [groupId, safeName, safePhone, safeEmail]
+      `INSERT INTO course_group_members (group_id, user_id, full_name, phone, email)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [groupId, req.session.userId, safeName, safePhone, safeEmail]
     );
 
     const updateResult = await client.query(
