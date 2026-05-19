@@ -7,12 +7,17 @@
    - `PGSSLMODE=require`
 3. For local Postgres (without Supabase), set:
    - `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGPORT`
-4. Create the tables:
+4. For Google Calendar OAuth, set:
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
+   - `GOOGLE_REDIRECT_URI` (example: `https://your-backend.onrender.com/api/google/callback`)
+   - `FRONTEND_ORIGIN` (where user returns after connect, can be comma-separated)
+5. Create the tables:
    ```sql
    -- run schema.sql inside your Postgres DB
    \i schema.sql
    ```
-5. Install dependencies and start:
+6. Install dependencies and start:
    ```bash
    npm install
    npm run dev
@@ -23,6 +28,10 @@
 - `POST /api/auth/login` `{ email, password }`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `GET /api/google/status`
+- `GET /api/google/connect`
+- `GET /api/google/callback`
+- `GET /api/class/calendar`
 
 ## Notes
 - Sessions are stored in PostgreSQL via `connect-pg-simple`.

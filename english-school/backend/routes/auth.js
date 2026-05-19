@@ -20,13 +20,14 @@ router.post('/register', async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const result = await pool.query(
-      "INSERT INTO users (role, name, email, password_hash) VALUES ('student', $1, $2, $3) RETURNING id",
+      "INSERT INTO users (role, name, email, password_hash) VALUES ('student', $1, $2, $3) RETURNING id, role",
       [name, email, passwordHash]
     );
 
     const userId = result.rows[0].id;
+    const role = result.rows[0].role;
     req.session.userId = userId;
-    res.status(201).json({ id: userId, name, email });
+    res.status(201).json({ id: userId, name, email, role });
   } catch (error) {
     next(error);
   }
@@ -41,7 +42,7 @@ router.post('/login', async (req, res, next) => {
     }
 
     const result = await pool.query(
-      'SELECT id, name, email, password_hash FROM users WHERE email = $1 LIMIT 1',
+      'SELECT id, role, name, email, password_hash FROM users WHERE email = $1 LIMIT 1',
       [email]
     );
 
@@ -56,7 +57,7 @@ router.post('/login', async (req, res, next) => {
     }
 
     req.session.userId = user.id;
-    res.json({ id: user.id, name: user.name, email: user.email });
+    res.json({ id: user.id, name: user.name, email: user.email, role: user.role });
   } catch (error) {
     next(error);
   }
@@ -74,7 +75,7 @@ router.post('/logout', (req, res, next) => {
 
 router.get('/me', requireAuth, async (req, res, next) => {
   try {
-    const result = await pool.query('SELECT id, name, email FROM users WHERE id = $1 LIMIT 1', [
+    const result = await pool.query('SELECT id, role, name, email FROM users WHERE id = $1 LIMIT 1', [
       req.session.userId,
     ]);
 

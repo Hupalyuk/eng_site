@@ -5,6 +5,7 @@ const AuthContext = createContext({
   user: null,
   loading: true,
   refreshUser: async () => {},
+  logout: async () => {},
   setUser: () => {},
 });
 
@@ -29,6 +30,17 @@ export function AuthProvider({ children }) {
     }
   }, [apiBase]);
 
+  const logout = useCallback(async () => {
+    try {
+      await fetch(`${apiBase}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      setUser(null);
+    }
+  }, [apiBase]);
+
   useEffect(() => {
     let active = true;
 
@@ -48,8 +60,8 @@ export function AuthProvider({ children }) {
   }, [refreshUser]);
 
   const value = useMemo(
-    () => ({ user, loading, refreshUser, setUser }),
-    [user, loading, refreshUser]
+    () => ({ user, loading, refreshUser, logout, setUser }),
+    [user, loading, refreshUser, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

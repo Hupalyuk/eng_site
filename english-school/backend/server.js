@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
 const enrollmentsRoutes = require('./routes/enrollments');
 const classRoutes = require('./routes/class');
+const googleRoutes = require('./routes/google');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -100,6 +101,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
 app.use('/api/enrollments', enrollmentsRoutes);
 app.use('/api/class', classRoutes);
+app.use('/api/google', googleRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

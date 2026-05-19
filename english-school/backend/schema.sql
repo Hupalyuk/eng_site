@@ -47,5 +47,7 @@ CREATE TABLE IF NOT EXISTS course_group_members (
 CREATE INDEX IF NOT EXISTS idx_course_group_members_group_id
 ON course_group_members (group_id);
 
+
+SELECT * FROM users;
 SELECT * FROM course_groups;
 SELECT * FROM course_group_members;

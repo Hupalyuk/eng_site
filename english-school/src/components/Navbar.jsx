@@ -12,7 +12,7 @@ const NAV_ITEMS = [
 
 function Navbar() {
   const [open, setOpen] = useState(false);
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   return (
     <header className="site-nav" data-open={open ? 'true' : 'false'}>
@@ -32,7 +32,12 @@ function Navbar() {
 
         <div className="nav-actions">
           {user ? (
-            <span className="nav-user">Hi, {user.name}</span>
+            <>
+              <span className="nav-user">Hi, {user.name}</span>
+              <button type="button" className="btn btn-danger" onClick={logout}>
+                Logout
+              </button>
+            </>
           ) : loading ? (
             <span className="nav-user">Loading...</span>
           ) : (
@@ -71,7 +76,19 @@ function Navbar() {
         </nav>
         <div className="mobile-actions">
           {user ? (
-            <span className="nav-user">Hi, {user.name}</span>
+            <>
+              <span className="nav-user">Hi, {user.name}</span>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={async () => {
+                  await logout();
+                  setOpen(false);
+                }}
+              >
+                Logout
+              </button>
+            </>
           ) : loading ? (
             <span className="nav-user">Loading...</span>
           ) : (

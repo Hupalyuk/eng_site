@@ -119,6 +119,60 @@ async function ensureCourseEnrollmentTables() {
     CREATE INDEX IF NOT EXISTS idx_course_group_members_user_id
     ON course_group_members (user_id);
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_google_tokens (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      access_token TEXT,
+      refresh_token TEXT,
+      scope TEXT,
+      token_type TEXT,
+      expiry_date BIGINT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS class_events (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(190) NOT NULL,
+      description TEXT,
+      location TEXT,
+      meet_link TEXT,
+      start_at TIMESTAMPTZ NOT NULL,
+      end_at TIMESTAMPTZ NOT NULL,
+      google_event_id VARCHAR(255),
+      synced_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_class_events_user_start
+    ON class_events (user_id, start_at);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS class_materials (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(255) NOT NULL,
+      file_url TEXT NOT NULL,
+      file_name VARCHAR(255) NOT NULL,
+      file_mime VARCHAR(190),
+      file_size BIGINT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_class_materials_created
+    ON class_materials (created_at DESC);
+  `);
 }
 
 module.exports = { pool, ensureCourseEnrollmentTables };
