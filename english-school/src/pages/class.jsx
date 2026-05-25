@@ -143,6 +143,8 @@ function ClassPage() {
   const [homeworkUploading, setHomeworkUploading] = useState(false);
   const [homeworkDragOver, setHomeworkDragOver] = useState(false);
   const homeworkFileInputRef = useRef(null);
+  const [teacherGroups, setTeacherGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState("");
 
   const isTeacher = user?.role === "teacher";
 
@@ -153,10 +155,30 @@ function ClassPage() {
 
   useEffect(() => {
     if (!user) return;
+    const loadGroups = async () => {
+      try {
+        const response = await fetch(`${apiBase}/api/class/groups`, { credentials: "include" });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) return;
+        const list = Array.isArray(payload?.groups) ? payload.groups : [];
+        setTeacherGroups(list);
+        if (!selectedGroupId && list.length > 0) {
+          setSelectedGroupId(String(list[0].id));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadGroups();
+  }, [apiBase, user, selectedGroupId]);
+
+  useEffect(() => {
+    if (!user) return;
     const load = async () => {
       try {
         setError("");
-        const response = await fetch(`${apiBase}/api/class/next`, { credentials: "include" });
+        const groupQuery = isTeacher && selectedGroupId ? `?groupId=${encodeURIComponent(selectedGroupId)}` : "";
+        const response = await fetch(`${apiBase}/api/class/next${groupQuery}`, { credentials: "include" });
         const payload = await response.json();
         if (!response.ok) {
           throw new Error(payload?.error || "Не вдалося завантажити дані заняття.");
@@ -168,7 +190,7 @@ function ClassPage() {
       }
     };
     load();
-  }, [apiBase, user]);
+  }, [apiBase, user, isTeacher, selectedGroupId]);
 
   useEffect(() => {
     if (!user) return;
@@ -282,7 +304,7 @@ function ClassPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ meetLink: meetInput, groupName }),
+        body: JSON.stringify({ meetLink: meetInput, groupName, groupId: selectedGroupId ? Number(selectedGroupId) : undefined }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || "Не вдалося зберегти посилання Google Meet.");
@@ -607,6 +629,22 @@ function ClassPage() {
           <div className="class-lesson-info">
             <p className="class-kicker">ГРУПА</p>
             <h1>{groupName}</h1>
+            {isTeacher && teacherGroups.length > 0 && (
+              <div className="class-meet-editor">
+                <label htmlFor="teacher-group-select">Група викладача</label>
+                <select
+                  id="teacher-group-select"
+                  value={selectedGroupId}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                >
+                  {teacherGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name} ({group.courseCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <p className="class-group-line">Наступний урок: {lessonTitle}</p>
             <p>{eventDate}</p>
             <p>{eventTime}</p>
@@ -990,5 +1028,4 @@ function ClassPage() {
 }
 
 export default ClassPage;
-
 

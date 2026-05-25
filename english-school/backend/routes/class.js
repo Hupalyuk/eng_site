@@ -131,6 +131,26 @@ async function getUserById(userId) {
   return result.rows[0] || null;
 }
 
+async function getTeacherGroups() {
+  const result = await pool.query(
+    `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name
+     FROM course_groups
+     ORDER BY name ASC`
+  );
+  return result.rows;
+}
+
+async function findGroupById(groupId) {
+  const result = await pool.query(
+    `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name
+     FROM course_groups
+     WHERE id = $1
+     LIMIT 1`,
+    [groupId]
+  );
+  return result.rows[0] || null;
+}
+
 async function getGoogleTokensByUser(userId) {
   const result = await pool.query(
     `SELECT access_token, refresh_token, scope, token_type, expiry_date
@@ -177,7 +197,22 @@ function normalizeEventTitle(value, fallback = 'Speaking lesson') {
 router.get('/next', requireAuth, async (req, res, next) => {
   try {
     const userId = req.session.userId;
-    const row = await findLatestGroupByUser(userId);
+    const user = await getUserById(userId);
+    const requestedGroupId = Number(req.query.groupId);
+    const safeGroupId = Number.isInteger(requestedGroupId) && requestedGroupId > 0 ? requestedGroupId : null;
+
+    let row = null;
+    if (user?.role === 'teacher') {
+      if (safeGroupId) {
+        row = await findGroupById(safeGroupId);
+      } else {
+        const groups = await getTeacherGroups();
+        row = groups[0] || null;
+      }
+    } else {
+      row = await findLatestGroupByUser(userId);
+    }
+
     if (!row) {
       return res.status(404).json({ error: 'No group assigned yet.' });
     }
@@ -195,13 +230,50 @@ router.get('/next', requireAuth, async (req, res, next) => {
     res.json({
       groupName: row.name,
       courseCode: String(row.course_code || '').toUpperCase(),
-      studentName: row.user_name,
+      studentName: row.user_name || user?.name || 'Teacher',
+      groupId: row.id,
       meetLink: row.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/',
       lesson: {
         title: `${String(row.course_code || '').toUpperCase()} Speaking`,
         startAt: nextStart.toISOString(),
         endAt: nextEnd.toISOString(),
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/groups', requireAuth, async (req, res, next) => {
+  try {
+    const user = await getUserById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (user.role === 'teacher') {
+      const groups = await getTeacherGroups();
+      return res.json({
+        groups: groups.map((row) => ({
+          id: row.id,
+          name: row.name,
+          courseCode: String(row.course_code || '').toUpperCase(),
+          meetLink: row.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/',
+        })),
+      });
+    }
+
+    const assigned = await findLatestGroupByUser(req.session.userId);
+    if (!assigned) return res.json({ groups: [] });
+    return res.json({
+      groups: [
+        {
+          id: assigned.id,
+          name: assigned.name,
+          courseCode: String(assigned.course_code || '').toUpperCase(),
+          meetLink: assigned.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/',
+        },
+      ],
     });
   } catch (error) {
     next(error);
@@ -216,7 +288,7 @@ router.put('/meet-link', requireAuth, async (req, res, next) => {
       return res.status(403).json({ error: 'Лише викладач може змінювати посилання Google Meet.' });
     }
 
-    const { meetLink, groupName } = req.body || {};
+    const { meetLink, groupName, groupId } = req.body || {};
     const safeMeetLink = String(meetLink || '').trim();
     const safeGroupName = String(groupName || '').trim();
 
@@ -228,7 +300,10 @@ router.put('/meet-link', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'Вкажіть коректне посилання Google Meet.' });
     }
 
-    let group = await findLatestGroupByUser(userId);
+    const requestedGroupId = Number(groupId);
+    let group = Number.isInteger(requestedGroupId) && requestedGroupId > 0
+      ? await findGroupById(requestedGroupId)
+      : await findLatestGroupByUser(userId);
     if (!group && safeGroupName) {
       const byNameResult = await pool.query(
         `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name

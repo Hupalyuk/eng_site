@@ -47,6 +47,16 @@ async function ensureCourseEnrollmentTables() {
   `);
 
   await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT FALSE;
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS teacher_status VARCHAR(32) NOT NULL DEFAULT 'none';
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS posts (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -172,6 +182,23 @@ async function ensureCourseEnrollmentTables() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_class_materials_created
     ON class_materials (created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS teacher_documents (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      file_url TEXT NOT NULL,
+      file_name VARCHAR(255) NOT NULL,
+      file_mime VARCHAR(190),
+      file_size BIGINT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_teacher_documents_user_id
+    ON teacher_documents (user_id);
   `);
 }
 

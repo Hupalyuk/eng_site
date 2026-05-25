@@ -10,6 +10,7 @@ import EditPost from "./pages/edit-post.jsx";
 import Courses from "./pages/courses.jsx";
 import CourseEnroll from "./pages/course-enroll.jsx";
 import ClassPage from "./pages/class.jsx";
+import AdminUsers from "./pages/admin-users.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           <Route path="/edit-post/:id" element={<EditPost />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Sign />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
         </Routes>
         <Footer />
       </BrowserRouter>

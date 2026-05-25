@@ -33,7 +33,12 @@ function Navbar() {
         <div className="nav-actions">
           {user ? (
             <>
-              <span className="nav-user">Hi, {user.name}</span>
+              {user.role === 'admin' && (
+                <Link to="/admin/users" className="btn btn-ghost">
+                  Admin
+                </Link>
+              )}
+              <span className="nav-user">Hi, {user.name} ({user.role})</span>
               <button type="button" className="btn btn-danger" onClick={logout}>
                 Logout
               </button>
@@ -77,7 +82,16 @@ function Navbar() {
         <div className="mobile-actions">
           {user ? (
             <>
-              <span className="nav-user">Hi, {user.name}</span>
+              {user.role === 'admin' && (
+                <Link
+                  to="/admin/users"
+                  className="btn btn-ghost"
+                  onClick={() => setOpen(false)}
+                >
+                  Admin
+                </Link>
+              )}
+              <span className="nav-user">Hi, {user.name} ({user.role})</span>
               <button
                 type="button"
                 className="btn btn-danger"

@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(120) NOT NULL,
   email VARCHAR(190) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  is_blocked BOOLEAN NOT NULL DEFAULT FALSE,
+  teacher_status VARCHAR(32) NOT NULL DEFAULT 'none',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -47,6 +49,18 @@ CREATE TABLE IF NOT EXISTS course_group_members (
 CREATE INDEX IF NOT EXISTS idx_course_group_members_group_id
 ON course_group_members (group_id);
 
+CREATE TABLE IF NOT EXISTS teacher_documents (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  file_url TEXT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_mime VARCHAR(190),
+  file_size BIGINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_teacher_documents_user_id
+ON teacher_documents (user_id);
 
 SELECT * FROM users;
 SELECT * FROM course_groups;
