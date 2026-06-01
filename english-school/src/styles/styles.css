@@ -2603,6 +2603,22 @@ textarea {
   min-height: 44px;
 }
 
+.class-open-gcal:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.class-sync-message {
+  margin: 10px 0 0;
+  border: 1px solid #bfe7d2;
+  border-radius: 10px;
+  background: #effaf4;
+  color: #19643f;
+  padding: 9px 11px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .class-calendar-actions {
   display: grid;
   gap: 10px;
@@ -2762,6 +2778,12 @@ textarea {
 
 .class-list li button.class-secondary-btn {
   margin-top: 8px;
+}
+
+.class-schedule-list {
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 6px;
 }
 
 .class-material-groups {

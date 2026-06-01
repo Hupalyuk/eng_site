@@ -118,6 +118,10 @@ function ClassPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
+  const [scheduleLessons, setScheduleLessons] = useState([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleSyncLoading, setScheduleSyncLoading] = useState(false);
+  const [scheduleSyncMessage, setScheduleSyncMessage] = useState("");
   const [customEvents, setCustomEvents] = useState([]);
   const [createLoading, setCreateLoading] = useState(false);
   const [eventForm, setEventForm] = useState({
@@ -283,6 +287,31 @@ function ClassPage() {
     loadCustomEvents();
   }, [apiBase, user]);
 
+  useEffect(() => {
+    if (!user) return;
+    const loadSchedule = async () => {
+      try {
+        setScheduleLoading(true);
+        const groupQuery = isTeacher && selectedGroupId ? `?groupId=${encodeURIComponent(selectedGroupId)}` : "";
+        const response = await fetch(`${apiBase}/api/class/schedule${groupQuery}`, { credentials: "include" });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          if (response.status === 404) {
+            setScheduleLessons([]);
+            return;
+          }
+          throw new Error(payload?.error || "Не вдалося завантажити розклад.");
+        }
+        setScheduleLessons(Array.isArray(payload?.lessons) ? payload.lessons : []);
+      } catch (err) {
+        setError((prev) => prev || err.message || "Не вдалося завантажити розклад.");
+      } finally {
+        setScheduleLoading(false);
+      }
+    };
+    loadSchedule();
+  }, [apiBase, user, isTeacher, selectedGroupId]);
+
   const groupName = classData?.groupName || t("classPage.noGroup");
   const lessonStart = classData?.lesson?.startAt || CLASS_FALLBACK.startDate;
   const lessonEnd = classData?.lesson?.endAt || CLASS_FALLBACK.endDate;
@@ -335,6 +364,44 @@ function ClassPage() {
       setError(err?.message || t("classPage.errors.connectGoogle"));
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const handleSyncSchedule = async () => {
+    try {
+      setError("");
+      setScheduleSyncMessage("");
+      if (!googleConnected) {
+        await handleConnectGoogleCalendar();
+        return;
+      }
+
+      setScheduleSyncLoading(true);
+      const response = await fetch(`${apiBase}/api/class/schedule/sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          groupId: isTeacher && selectedGroupId ? Number(selectedGroupId) : undefined,
+          weeks: 8,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (payload?.needsGoogleConnect) setGoogleConnected(false);
+        throw new Error(payload?.error || "Не вдалося синхронізувати розклад.");
+      }
+
+      setScheduleSyncMessage(`Синхронізовано: ${payload.total || 0} занять (${payload.created || 0} нових, ${payload.updated || 0} оновлено).`);
+      const calendarResponse = await fetch(`${apiBase}/api/class/calendar`, { credentials: "include" });
+      const calendarPayload = await calendarResponse.json().catch(() => ({}));
+      if (calendarResponse.ok) {
+        setCalendarEvents(Array.isArray(calendarPayload?.events) ? calendarPayload.events : []);
+      }
+    } catch (err) {
+      setError(err?.message || "Не вдалося синхронізувати розклад.");
+    } finally {
+      setScheduleSyncLoading(false);
     }
   };
 
@@ -439,6 +506,32 @@ function ClassPage() {
       }
 
       setCustomEvents((prev) => prev.filter((item) => Number(item.id) !== Number(eventId)));
+      if (googleConnected) {
+        const calResponse = await fetch(`${apiBase}/api/class/calendar`, { credentials: "include" });
+        const calPayload = await calResponse.json().catch(() => ({}));
+        if (calResponse.ok) {
+          setCalendarEvents(Array.isArray(calPayload?.events) ? calPayload.events : []);
+        }
+      }
+    } catch (err) {
+      setError(err?.message || t("classPage.errors.deleteEvent"));
+    }
+  };
+
+  const handleDeleteScheduleEvent = async (eventId) => {
+    try {
+      setError("");
+      const response = await fetch(`${apiBase}/api/class/schedule/${encodeURIComponent(eventId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (payload?.needsGoogleConnect) setGoogleConnected(false);
+        throw new Error(payload?.error || t("classPage.errors.deleteEvent"));
+      }
+
+      setScheduleLessons((prev) => prev.filter((item) => item.id !== eventId));
       if (googleConnected) {
         const calResponse = await fetch(`${apiBase}/api/class/calendar`, { credentials: "include" });
         const calPayload = await calResponse.json().catch(() => ({}));
@@ -579,18 +672,29 @@ function ClassPage() {
   const monthWeeks = useMemo(() => buildMonthMatrix(calendarMonth), [calendarMonth]);
   const localEventsByDay = useMemo(() => {
     const map = new Map();
+    scheduleLessons.forEach((event) => {
+      if (!event?.startAt) return;
+      const dayKey = toLocalDayKey(event.startAt);
+      map.set(dayKey, (map.get(dayKey) || 0) + 1);
+    });
     customEvents.forEach((event) => {
       if (!event?.startAt) return;
       const dayKey = toLocalDayKey(event.startAt);
       map.set(dayKey, (map.get(dayKey) || 0) + 1);
     });
     return map;
-  }, [customEvents]);
+  }, [customEvents, scheduleLessons]);
   const selectedDayEvents = useMemo(() => {
     if (!selectedDay) return [];
     const key = toLocalDayKey(selectedDay);
-    return customEvents.filter((event) => toLocalDayKey(event.startAt) === key);
-  }, [customEvents, selectedDay]);
+    const lessons = scheduleLessons
+      .filter((event) => toLocalDayKey(event.startAt) === key)
+      .map((event) => ({ ...event, source: "schedule" }));
+    const events = customEvents
+      .filter((event) => toLocalDayKey(event.startAt) === key)
+      .map((event) => ({ ...event, source: "custom" }));
+    return [...lessons, ...events].sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
+  }, [customEvents, scheduleLessons, selectedDay]);
   const materialsByDay = useMemo(() => {
     const groups = new Map();
     materials.forEach((item) => {
@@ -707,10 +811,19 @@ function ClassPage() {
               <h2>Календар</h2>
             </div>
             <div className="class-calendar-actions">
+              <button
+                type="button"
+                className="class-open-gcal"
+                onClick={handleSyncSchedule}
+                disabled={scheduleSyncLoading || scheduleLoading || scheduleLessons.length === 0}
+              >
+                {scheduleSyncLoading ? "Синхронізуємо..." : "Додати розклад у Google Calendar"}
+              </button>
               <a className="class-open-gcal" href="https://calendar.google.com/" target="_blank" rel="noreferrer">
                 Відкрити Google Calendar
               </a>
             </div>
+            {scheduleSyncMessage && <p className="class-sync-message">{scheduleSyncMessage}</p>}
 
             <div className="class-month-calendar">
               <div className="class-month-head">
@@ -763,19 +876,40 @@ function ClassPage() {
                 <p className="class-link-line">Google Calendar підключено</p>
               )}
             </div>
+            <div className="class-events-list">
+              <h3>Розклад занять на сайті</h3>
+              {scheduleLoading ? (
+                <p>Завантаження розкладу...</p>
+              ) : scheduleLessons.length === 0 ? (
+                <p>Поки що немає запланованих занять.</p>
+              ) : (
+                <ul className="class-list class-schedule-list">
+                  {scheduleLessons.slice(0, 8).map((lesson) => (
+                    <li key={lesson.id}>
+                      <span className="class-home-icon">CL</span>
+                      <div>
+                        <strong>{lesson.title}</strong>
+                        <p>{new Date(lesson.startAt).toLocaleString("uk-UA")} - {new Date(lesson.endAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}</p>
+                        <p>{lesson.groupName} {lesson.meetLink ? `• Meet: ${lesson.meetLink}` : ""}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </article>
           <article className="class-card class-card-blank">
             <div className="class-card-head">
               <span>Google Calendar</span>
             </div>
             {!googleConnected ? (
-              <p>?????????? Google Calendar, ??? ?????? ?????.</p>
+              <p>Підключіть Google Calendar, щоб бачити синхронізовані заняття.</p>
             ) : (
               <div className="class-events-list class-events-scroll">
                 {calendarLoading ? (
-                  <p>????????????...</p>
+                  <p>Завантаження...</p>
                 ) : calendarEvents.length === 0 ? (
-                  <p></p>
+                  <p>У Google Calendar поки що немає подій на найближчий період.</p>
                 ) : (
                   <ul className="class-list">
                     {calendarEvents.map((event) => (
@@ -784,8 +918,8 @@ function ClassPage() {
                         <div>
                           <strong>{event.title}</strong>
                           <p>
-                            {event.startAt ? new Date(event.startAt).toLocaleString("uk-UA") : "??? ?? ???????"}
-                            {event.meetLink ? ` � Meet: ${event.meetLink}` : ""}
+                            {event.startAt ? new Date(event.startAt).toLocaleString("uk-UA") : "Час не вказано"}
+                            {event.meetLink ? ` • Meet: ${event.meetLink}` : ""}
                           </p>
                         </div>
                       </li>
@@ -1005,10 +1139,33 @@ function ClassPage() {
                 <ul className="class-list">
                   {selectedDayEvents.map((event) => (
                     <li key={event.id}>
-                      <span className="class-home-icon">EV</span>
+                      <span className="class-home-icon">{event.source === "schedule" ? "CL" : "EV"}</span>
                       <div>
                         <strong>{event.title}</strong>
                         <p>{event.startAt ? new Date(event.startAt).toLocaleString("uk-UA") : "Час не вказано"}</p>
+                        {event.source === "schedule" ? (
+                        <div>
+                          <p>{event.groupName} {event.meetLink ? `• Meet: ${event.meetLink}` : ""}</p>
+                          {event.googleEventId ? (
+                            <button
+                              type="button"
+                              className="class-secondary-btn"
+                              onClick={() => handleDeleteScheduleEvent(event.id)}
+                            >
+                              Видалити подію
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="class-secondary-btn"
+                              disabled
+                              title="Ця подія ще не синхронізована з Google Calendar"
+                            >
+                              Не синхронізовано
+                            </button>
+                          )}
+                        </div>
+                      ) : (
                         <button
                           type="button"
                           className="class-secondary-btn"
@@ -1016,6 +1173,7 @@ function ClassPage() {
                         >
                           Видалити подію
                         </button>
+                      )}
                       </div>
                     </li>
                   ))}

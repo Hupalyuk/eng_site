@@ -45,6 +45,9 @@ const DAY_TO_INDEX = {
   fri: 5,
   sat: 6,
 };
+const DEFAULT_SCHEDULE_WEEKS = 8;
+const MAX_SCHEDULE_WEEKS = 16;
+const LESSON_DURATION_MINUTES = 60;
 
 function parseTime(timeValue) {
   const [hourRaw, minuteRaw] = String(timeValue || '18:00').split(':');
@@ -54,11 +57,21 @@ function parseTime(timeValue) {
   };
 }
 
-function computeNextLesson(daysKey, timeValue) {
-  const days = String(daysKey || '')
+function toPositiveInt(value, fallback, max) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, max);
+}
+
+function parseKeyList(value) {
+  return String(value || '')
     .split(',')
-    .map((day) => day.trim().toLowerCase())
+    .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
+}
+
+function computeNextLesson(daysKey, timeValue) {
+  const days = parseKeyList(daysKey);
   const { hour, minute } = parseTime(timeValue);
 
   const now = new Date();
@@ -79,6 +92,58 @@ function computeNextLesson(daysKey, timeValue) {
   }
 
   return nextLesson;
+}
+
+function makeLessonTitle(group) {
+  const course = String(group.course_code || '').toUpperCase();
+  return `${course} ${group.name} lesson`.trim();
+}
+
+function toSchedulePayload(group, startAt, timeValue) {
+  const endAt = new Date(startAt.getTime() + LESSON_DURATION_MINUTES * 60 * 1000);
+  const meetLink = group.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/';
+  return {
+    id: `${group.id}-${startAt.toISOString()}`,
+    groupId: Number(group.id),
+    groupName: group.name,
+    courseCode: String(group.course_code || '').toUpperCase(),
+    title: makeLessonTitle(group),
+    description: `Group: ${group.name}\nCourse: ${String(group.course_code || '').toUpperCase()}`,
+    location: meetLink,
+    meetLink,
+    timeKey: timeValue,
+    startAt: startAt.toISOString(),
+    endAt: endAt.toISOString(),
+  };
+}
+
+function generateScheduleLessons(group, { from = new Date(), weeks = DEFAULT_SCHEDULE_WEEKS } = {}) {
+  const days = parseKeyList(group.days_key);
+  const times = parseKeyList(group.times_key);
+  const fromDate = new Date(from);
+  const safeFrom = Number.isNaN(fromDate.getTime()) ? new Date() : fromDate;
+  const until = new Date(safeFrom);
+  until.setDate(until.getDate() + weeks * 7);
+  const cursor = new Date(safeFrom);
+  cursor.setHours(0, 0, 0, 0);
+  const lessons = [];
+
+  while (cursor <= until) {
+    const dayMatched = days.some((dayCode) => DAY_TO_INDEX[dayCode] === cursor.getDay());
+    if (dayMatched) {
+      times.forEach((timeValue) => {
+        const { hour, minute } = parseTime(timeValue);
+        const startAt = new Date(cursor);
+        startAt.setHours(hour, minute, 0, 0);
+        if (startAt >= safeFrom) {
+          lessons.push(toSchedulePayload(group, startAt, timeValue));
+        }
+      });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return lessons.sort((a, b) => new Date(a.startAt) - new Date(b.startAt));
 }
 
 async function findLatestGroupByUser(userId) {
@@ -133,7 +198,7 @@ async function getUserById(userId) {
 
 async function getTeacherGroups() {
   const result = await pool.query(
-    `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name
+    `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name, teacher_id
      FROM course_groups
      ORDER BY name ASC`
   );
@@ -142,7 +207,7 @@ async function getTeacherGroups() {
 
 async function findGroupById(groupId) {
   const result = await pool.query(
-    `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name
+    `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name, teacher_id
      FROM course_groups
      WHERE id = $1
      LIMIT 1`,
@@ -169,6 +234,59 @@ function getGoogleOAuthClient() {
     process.env.GOOGLE_CLIENT_SECRET,
     process.env.GOOGLE_REDIRECT_URI
   );
+}
+
+async function ensureScheduleGoogleEventsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS schedule_google_events (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      group_id BIGINT NOT NULL REFERENCES course_groups(id) ON DELETE CASCADE,
+      lesson_start TIMESTAMPTZ NOT NULL,
+      google_event_id VARCHAR(255) NOT NULL,
+      google_html_link TEXT,
+      synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, group_id, lesson_start)
+    );
+  `);
+}
+
+async function getAuthorizedCalendar(userId) {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+    const error = new Error('Google OAuth is not configured.');
+    error.status = 500;
+    throw error;
+  }
+
+  const tokens = await getGoogleTokensByUser(userId);
+  if (!tokens?.refresh_token) {
+    const error = new Error('Google Calendar is not connected.');
+    error.status = 401;
+    error.needsGoogleConnect = true;
+    throw error;
+  }
+
+  const auth = getGoogleOAuthClient();
+  auth.setCredentials({
+    access_token: tokens.access_token || undefined,
+    refresh_token: tokens.refresh_token || undefined,
+    scope: tokens.scope || undefined,
+    token_type: tokens.token_type || undefined,
+    expiry_date: tokens.expiry_date || undefined,
+  });
+
+  return google.calendar({ version: 'v3', auth });
+}
+
+async function getScheduleGroupForUser(user, groupId) {
+  if (user?.role === 'teacher' || user?.role === 'admin') {
+    if (groupId) return findGroupById(groupId);
+    const groups = await getTeacherGroups();
+    return groups[0] || null;
+  }
+
+  return findLatestGroupByUser(user.id);
 }
 
 function toEventPayload(row) {
@@ -327,6 +445,246 @@ router.put('/meet-link', requireAuth, async (req, res, next) => {
       groupName: group.name,
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/schedule', requireAuth, async (req, res, next) => {
+  try {
+    const user = await getUserById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const requestedGroupId = Number(req.query.groupId);
+    const groupId = Number.isInteger(requestedGroupId) && requestedGroupId > 0 ? requestedGroupId : null;
+    const weeks = toPositiveInt(req.query.weeks, DEFAULT_SCHEDULE_WEEKS, MAX_SCHEDULE_WEEKS);
+    const group = await getScheduleGroupForUser(user, groupId);
+    if (!group) {
+      return res.status(404).json({ error: 'No group assigned yet.' });
+    }
+
+    const lessons = generateScheduleLessons(group, { weeks });
+    const lessonStarts = lessons.map((lesson) => lesson.startAt);
+    const syncResult = await pool.query(
+      `SELECT lesson_start, google_event_id, google_html_link, synced_at
+       FROM schedule_google_events
+       WHERE user_id = $1 AND group_id = $2 AND lesson_start = ANY($3::timestamptz[])`,
+      [user.id, group.id, lessonStarts]
+    );
+
+    const syncMap = new Map(
+      syncResult.rows.map((row) => [new Date(row.lesson_start).toISOString(), row])
+    );
+
+    const enrichedLessons = lessons.map((lesson) => {
+      const syncMeta = syncMap.get(new Date(lesson.startAt).toISOString());
+      return {
+        ...lesson,
+        googleEventId: syncMeta?.google_event_id || null,
+        googleHtmlLink: syncMeta?.google_html_link || null,
+        syncedAt: syncMeta?.synced_at ? new Date(syncMeta.synced_at).toISOString() : null,
+      };
+    });
+
+    res.json({
+      group: {
+        id: group.id,
+        name: group.name,
+        courseCode: String(group.course_code || '').toUpperCase(),
+        daysKey: group.days_key,
+        timesKey: group.times_key,
+        meetLink: group.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/',
+      },
+      lessons: enrichedLessons,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/schedule/:id', requireAuth, async (req, res, next) => {
+  try {
+    const userId = req.session.userId;
+    const rawId = String(req.params.id || '');
+    const separatorIndex = rawId.indexOf('-');
+    if (separatorIndex < 1) {
+      return res.status(400).json({ error: 'Invalid schedule event id.' });
+    }
+
+    const groupId = Number(rawId.substring(0, separatorIndex));
+    const lessonStart = rawId.substring(separatorIndex + 1);
+    const startAt = new Date(lessonStart);
+    if (!Number.isInteger(groupId) || groupId <= 0 || Number.isNaN(startAt.getTime())) {
+      return res.status(400).json({ error: 'Invalid schedule event id.' });
+    }
+
+    const scheduledResult = await pool.query(
+      `SELECT id, google_event_id
+       FROM schedule_google_events
+       WHERE user_id = $1 AND group_id = $2 AND lesson_start = $3
+       LIMIT 1`,
+      [userId, groupId, startAt.toISOString()]
+    );
+
+    if (scheduledResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Schedule event not found or not synced.' });
+    }
+
+    const scheduledRow = scheduledResult.rows[0];
+    if (scheduledRow.google_event_id) {
+      const calendar = await getAuthorizedCalendar(userId);
+      try {
+        await calendar.events.delete({
+          calendarId: 'primary',
+          eventId: String(scheduledRow.google_event_id),
+        });
+      } catch (googleDeleteError) {
+        const status = googleDeleteError?.code || googleDeleteError?.status;
+        if (status !== 404 && status !== 410) {
+          throw googleDeleteError;
+        }
+      }
+    }
+
+    await pool.query('DELETE FROM schedule_google_events WHERE id = $1', [scheduledRow.id]);
+    res.json({ ok: true });
+  } catch (error) {
+    if (error?.code === 401 || error?.status === 401) {
+      return res.status(401).json({ error: 'Reconnect Google Calendar and try again.', needsGoogleConnect: true });
+    }
+    if (
+      error?.code === 403 ||
+      error?.status === 403 ||
+      error?.errors?.some((item) => item?.reason === 'insufficientPermissions')
+    ) {
+      return res.status(403).json({
+        error: 'Google Calendar permissions are insufficient. Reconnect Google Calendar and grant edit access.',
+        needsGoogleConnect: true,
+      });
+    }
+    next(error);
+  }
+});
+
+router.post('/schedule/sync', requireAuth, async (req, res, next) => {
+  try {
+    await ensureScheduleGoogleEventsTable();
+
+    const user = await getUserById(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const requestedGroupId = Number(req.body?.groupId);
+    const groupId = Number.isInteger(requestedGroupId) && requestedGroupId > 0 ? requestedGroupId : null;
+    const weeks = toPositiveInt(req.body?.weeks, DEFAULT_SCHEDULE_WEEKS, MAX_SCHEDULE_WEEKS);
+    const group = await getScheduleGroupForUser(user, groupId);
+    if (!group) {
+      return res.status(404).json({ error: 'No group assigned yet.' });
+    }
+
+    const lessons = generateScheduleLessons(group, { weeks });
+    if (lessons.length === 0) {
+      return res.json({ ok: true, created: 0, updated: 0, lessons: [] });
+    }
+
+    const calendar = await getAuthorizedCalendar(user.id);
+    let created = 0;
+    let updated = 0;
+    let firstHtmlLink = '';
+
+    for (const lesson of lessons) {
+      const startAt = new Date(lesson.startAt);
+      const endAt = new Date(lesson.endAt);
+      const existing = await pool.query(
+        `SELECT google_event_id
+         FROM schedule_google_events
+         WHERE user_id = $1 AND group_id = $2 AND lesson_start = $3
+         LIMIT 1`,
+        [user.id, lesson.groupId, startAt.toISOString()]
+      );
+
+      const resource = {
+        summary: lesson.title,
+        description: `${lesson.description}\n\nGoogle Meet: ${lesson.meetLink}`,
+        location: lesson.meetLink || undefined,
+        start: { dateTime: startAt.toISOString() },
+        end: { dateTime: endAt.toISOString() },
+        extendedProperties: {
+          private: {
+            englishSchoolGroupId: String(lesson.groupId),
+            englishSchoolLessonStart: lesson.startAt,
+          },
+        },
+      };
+
+      let googleEventId = existing.rows[0]?.google_event_id || null;
+      let googleHtmlLink = '';
+
+      if (googleEventId) {
+        try {
+          const response = await calendar.events.update({
+            calendarId: 'primary',
+            eventId: googleEventId,
+            requestBody: resource,
+          });
+          googleHtmlLink = response?.data?.htmlLink || '';
+          updated += 1;
+        } catch (googleError) {
+          const status = googleError?.code || googleError?.status;
+          if (status !== 404 && status !== 410) throw googleError;
+          googleEventId = null;
+        }
+      }
+
+      if (!googleEventId) {
+        const response = await calendar.events.insert({
+          calendarId: 'primary',
+          requestBody: resource,
+        });
+        googleEventId = response.data.id || null;
+        googleHtmlLink = response?.data?.htmlLink || '';
+        created += 1;
+      }
+
+      if (googleEventId) {
+        if (!firstHtmlLink && googleHtmlLink) firstHtmlLink = googleHtmlLink;
+        await pool.query(
+          `INSERT INTO schedule_google_events (user_id, group_id, lesson_start, google_event_id, google_html_link, synced_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (user_id, group_id, lesson_start)
+           DO UPDATE SET
+             google_event_id = EXCLUDED.google_event_id,
+             google_html_link = EXCLUDED.google_html_link,
+             synced_at = NOW()`,
+          [user.id, lesson.groupId, startAt.toISOString(), googleEventId, googleHtmlLink || null]
+        );
+      }
+    }
+
+    res.json({
+      ok: true,
+      group: { id: group.id, name: group.name, courseCode: String(group.course_code || '').toUpperCase() },
+      created,
+      updated,
+      total: lessons.length,
+      htmlLink: firstHtmlLink || 'https://calendar.google.com/',
+    });
+  } catch (error) {
+    if (error?.needsGoogleConnect || error?.code === 401 || error?.status === 401) {
+      return res.status(401).json({ error: 'Google Calendar is not connected.', needsGoogleConnect: true });
+    }
+    if (
+      error?.code === 403 ||
+      error?.status === 403 ||
+      error?.errors?.some((item) => item?.reason === 'insufficientPermissions')
+    ) {
+      return res.status(403).json({
+        error: 'Google Calendar permissions are insufficient. Reconnect Google Calendar and grant edit access.',
+        needsGoogleConnect: true,
+      });
+    }
     next(error);
   }
 });
