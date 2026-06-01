@@ -32,6 +32,7 @@ body {
   display: grid;
   place-items: center;
   padding: 24px 16px 40px;
+  align-content: start;
 }
 
 .shell {
@@ -3008,8 +3009,79 @@ textarea {
   margin: 32px auto;
   padding: 20px;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px solid #ece8f7;
+}
+
+.admin-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.admin-head h1,
+.admin-head h2 {
+  margin: 0 0 6px;
+  color: #1f2a44;
+}
+
+.admin-head p {
+  margin: 0;
+  color: #667085;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+}
+
+.admin-tabs button,
+.admin-head > button,
+.admin-pagination button,
+.admin-group-form button {
+  border: 1px solid #d9d1ee;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #26324d;
+  padding: 8px 12px;
+  font-weight: 700;
+}
+
+.admin-tabs button.is-active {
+  background: #4fb6b4;
+  border-color: #4fb6b4;
+  color: #ffffff;
+}
+
+.admin-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.admin-stat-card {
+  border: 1px solid #e8eef7;
+  border-radius: 8px;
+  padding: 16px;
+  background: #f8fbfd;
+}
+
+.admin-stat-card span {
+  display: block;
+  color: #667085;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.admin-stat-card strong {
+  display: block;
+  color: #1f2a44;
+  font-size: 28px;
 }
 
 .admin-filters {
@@ -3019,15 +3091,42 @@ textarea {
   margin: 16px 0;
 }
 
+.admin-group-form {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  align-items: end;
+  padding: 14px;
+  margin: 16px 0;
+  border: 1px solid #e8eef7;
+  border-radius: 8px;
+  background: #f8fbfd;
+}
+
+.admin-group-form h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
 .admin-filters input,
 .admin-filters select,
 .admin-filters button,
+.admin-group-form input,
+.admin-group-form select,
 .admin-table input,
 .admin-table select,
 .admin-actions button {
   border: 1px solid #d9d1ee;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 8px 10px;
+}
+
+.admin-table small {
+  display: block;
+  color: #667085;
+  margin-top: 4px;
+  max-width: 360px;
+  white-space: normal;
 }
 
 .admin-table-wrap {
@@ -3050,4 +3149,91 @@ textarea {
 .admin-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-actions button {
+  background: #ffffff;
+  color: #26324d;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-actions .admin-action-approve {
+  border-color: #3cb371;
+  background: #eefaf3;
+  color: #11643a;
+}
+
+.admin-actions .admin-action-reject {
+  border-color: #e07a7a;
+  background: #fff1f1;
+  color: #9c2d2d;
+}
+
+.admin-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin-pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(16, 24, 40, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.admin-modal {
+  width: min(680px, 94vw);
+  max-height: 84vh;
+  overflow: auto;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 18px;
+  border: 1px solid #e8eef7;
+}
+
+.admin-doc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.admin-doc-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.admin-doc-list small {
+  display: block;
+  color: #667085;
+  margin-top: 3px;
+}
+
+.admin-table code {
+  white-space: normal;
+  word-break: break-word;
 }

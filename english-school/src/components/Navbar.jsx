@@ -1,18 +1,43 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext.jsx';
+import { supportedLanguages } from '../i18n.js';
 
 const NAV_ITEMS = [
-  { label: 'Home', to: '/' },
-  { label: 'Courses', to: '/courses' },
-  { label: 'Class', to: '/class' },
-  { label: 'Blog', to: '/blog' },
-  { label: 'About Us', to: '/#about' },
+  { labelKey: 'nav.home', to: '/' },
+  { labelKey: 'nav.courses', to: '/courses' },
+  { labelKey: 'nav.class', to: '/class' },
+  { labelKey: 'nav.blog', to: '/blog' },
+  { labelKey: 'nav.about', to: '/#about' },
 ];
 
 function Navbar() {
   const [open, setOpen] = useState(false);
   const { user, loading, logout } = useAuth();
+  const { t, i18n } = useTranslation();
+
+  const changeLanguage = (language) => {
+    i18n.changeLanguage(language);
+    setOpen(false);
+  };
+
+  const renderLanguageSwitch = () => (
+    <div className="language-switch" role="group" aria-label={t('nav.aria.language')}>
+      {supportedLanguages.map((language) => (
+        <button
+          key={language.code}
+          type="button"
+          className={`lang-option${i18n.language === language.code ? ' is-active' : ''}`}
+          aria-pressed={i18n.language === language.code}
+          title={language.name}
+          onClick={() => changeLanguage(language.code)}
+        >
+          {language.label}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <header className="site-nav" data-open={open ? 'true' : 'false'}>
@@ -22,37 +47,38 @@ function Navbar() {
           <span className="brand-text">TOTC</span>
         </div>
 
-        <nav className="nav-links" aria-label="Primary">
+        <nav className="nav-links" aria-label={t('nav.aria.primary')}>
           {NAV_ITEMS.map((item) => (
-            <Link key={item.label} to={item.to}>
-              {item.label}
+            <Link key={item.labelKey} to={item.to}>
+              {t(item.labelKey)}
             </Link>
           ))}
         </nav>
 
         <div className="nav-actions">
+          {renderLanguageSwitch()}
           {user ? (
             <>
               {user.role === 'admin' && (
                 <Link to="/admin/users" className="btn btn-ghost">
-                  Admin
+                  {t('nav.admin')}
                 </Link>
               )}
-              <span className="nav-user">Hi, {user.name} ({user.role})</span>
+              <span className="nav-user">{t('nav.hi', { name: user.name, role: user.role })}</span>
               <button type="button" className="btn btn-danger" onClick={logout}>
-                Logout
+                {t('nav.logout')}
               </button>
             </>
           ) : loading ? (
-            <span className="nav-user">Loading...</span>
+            <span className="nav-user">{t('common.loading')}</span>
           ) : (
             <>
               <Link to="/login" className="btn btn-ghost">
-                Login
+                {t('nav.login')}
               </Link>
 
               <Link to="/register" className="btn btn-light">
-                Sign Up
+                {t('nav.signUp')}
               </Link>
             </>
           )}
@@ -61,7 +87,7 @@ function Navbar() {
         <button
           className="burger"
           type="button"
-          aria-label="Toggle menu"
+          aria-label={t('nav.aria.toggle')}
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
         >
@@ -72,14 +98,15 @@ function Navbar() {
       </div>
 
       <div className="mobile-panel">
-        <nav className="mobile-links" aria-label="Mobile">
+        <nav className="mobile-links" aria-label={t('nav.aria.mobile')}>
           {NAV_ITEMS.map((item) => (
-            <Link key={item.label} to={item.to} onClick={() => setOpen(false)}>
-              {item.label}
+            <Link key={item.labelKey} to={item.to} onClick={() => setOpen(false)}>
+              {t(item.labelKey)}
             </Link>
           ))}
         </nav>
         <div className="mobile-actions">
+          {renderLanguageSwitch()}
           {user ? (
             <>
               {user.role === 'admin' && (
@@ -88,10 +115,10 @@ function Navbar() {
                   className="btn btn-ghost"
                   onClick={() => setOpen(false)}
                 >
-                  Admin
+                  {t('nav.admin')}
                 </Link>
               )}
-              <span className="nav-user">Hi, {user.name} ({user.role})</span>
+              <span className="nav-user">{t('nav.hi', { name: user.name, role: user.role })}</span>
               <button
                 type="button"
                 className="btn btn-danger"
@@ -100,11 +127,11 @@ function Navbar() {
                   setOpen(false);
                 }}
               >
-                Logout
+                {t('nav.logout')}
               </button>
             </>
           ) : loading ? (
-            <span className="nav-user">Loading...</span>
+            <span className="nav-user">{t('common.loading')}</span>
           ) : (
             <>
               <Link
@@ -112,7 +139,7 @@ function Navbar() {
                 className="btn btn-ghost"
                 onClick={() => setOpen(false)}
               >
-                Login
+                {t('nav.login')}
               </Link>
 
               <Link
@@ -120,7 +147,7 @@ function Navbar() {
                 className="btn btn-light"
                 onClick={() => setOpen(false)}
               >
-                Sign Up
+                {t('nav.signUp')}
               </Link>
             </>
           )}

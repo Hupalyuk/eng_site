@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
 
 const Register = () => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
+  const { t } = useTranslation();
   const [formType, setFormType] = useState("student");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -33,12 +35,12 @@ const Register = () => {
     setSuccess("");
 
     if (!name || !email || !password) {
-      setError("Name, email, and password are required.");
+      setError(t("auth.errors.registerRequired"));
       return;
     }
 
     if (isTeacher && documents.length === 0) {
-      setError("Upload at least one document for teacher registration.");
+      setError(t("auth.errors.docsRequired"));
       return;
     }
 
@@ -69,18 +71,18 @@ const Register = () => {
 
       const payload = await readJsonSafe(response);
       if (!response.ok) {
-        setError(payload?.error || "Registration failed.");
+        setError(payload?.error || t("auth.errors.registerFailed"));
         return;
       }
 
       setUser(payload);
       if (isTeacher) {
-        setSuccess("?????? ??????? ????????. ???????? ??????? ??????????????.");
+        setSuccess(t("auth.teacherSuccess"));
       }
       navigate("/");
     } catch (err) {
       console.error(err);
-      setError("Network error. Please try again.");
+      setError(t("common.networkError"));
     } finally {
       setLoading(false);
     }
@@ -88,55 +90,55 @@ const Register = () => {
 
   return (
     <main className="page">
-      <section className="shell" aria-label="Registration layout">
+      <section className="shell" aria-label={t("auth.register")}>
         <div className="hero" aria-hidden="true">
           <img className="hero-img" src="/images/login/sign.png" alt="Hero image" />
         </div>
 
-        <div className="card" aria-label="Registration form">
-          <h1>Welcome to lorem !..</h1>
+        <div className="card" aria-label={t("auth.register")}>
+          <h1>{t("auth.registerTitle")}</h1>
 
-          <div className="pill-switch" role="tablist" aria-label="Auth switch">
+          <div className="pill-switch" role="tablist" aria-label={t("auth.switchAria")}>
             <Link className="pill" role="tab" aria-selected="false" to="/login">
-              Login
+              {t("auth.login")}
             </Link>
             <Link className="pill is-active" role="tab" aria-selected="true" to="/register">
-              Register
+              {t("auth.register")}
             </Link>
           </div>
 
-          <p className="intro">Choose account type and complete your registration.</p>
+          <p className="intro">{t("auth.registerIntro")}</p>
 
           <form className="form" autoComplete="on" onSubmit={handleSubmit}>
             <label className="field">
-              <span>Account type</span>
+              <span>{t("auth.accountType")}</span>
               <div className="register-select-wrap">
                 <select value={formType} onChange={(e) => setFormType(e.target.value)}>
-                  <option value="student">Student</option>
-                  <option value="teacher">Teacher</option>
+                  <option value="student">{t("auth.student")}</option>
+                  <option value="teacher">{t("auth.teacher")}</option>
                 </select>
               </div>
             </label>
 
             <label className="field">
-              <span>Email Address</span>
-              <input type="email" placeholder="Enter your Email Address" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <span>{t("auth.emailAddress")}</span>
+              <input type="email" placeholder={t("auth.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required />
             </label>
 
             <label className="field">
-              <span>User name</span>
-              <input type="text" placeholder="Enter your User name" value={name} onChange={(e) => setName(e.target.value)} required />
+              <span>{t("auth.username")}</span>
+              <input type="text" placeholder={t("auth.usernamePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} required />
             </label>
 
             <label className="field">
-              <span>Password</span>
-              <input type="password" placeholder="Enter your Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <span>{t("common.password")}</span>
+              <input type="password" placeholder={t("auth.passwordPlaceholder")} value={password} onChange={(e) => setPassword(e.target.value)} required />
             </label>
 
             {isTeacher && (
               <>
                 <div className="field">
-                  <span>Documents (pdf, image, doc)</span>
+                  <span>{t("auth.docs")}</span>
                   <input id="teacher-documents" type="file" multiple className="register-file-input" onChange={(e) => setDocuments(Array.from(e.target.files || []))} />
                   <label htmlFor="teacher-documents" className="register-upload-box">
                     <span className="register-upload-icon" aria-hidden="true">
@@ -146,14 +148,14 @@ const Register = () => {
                       </svg>
                     </span>
                     <span className="register-upload-copy">
-                      <strong>Drop your files here</strong>
-                      <span>or click to browse (PNG/JPG/WEBP/PDF)</span>
+                      <strong>{t("auth.dropFiles")}</strong>
+                      <span>{t("auth.browseFiles")}</span>
                     </span>
                   </label>
                 </div>
                 <ul className="register-doc-rules">
-                  <li>Додайте документи, що підтверджують кваліфікацію.</li>
-                  <li>До 5 файлів, бажано у форматі PDF/JPG/PNG.</li>
+                  <li>{t("auth.docRule1")}</li>
+                  <li>{t("auth.docRule2")}</li>
                 </ul>
                 {documents.length > 0 && (
                   <ul className="register-doc-list">
@@ -169,7 +171,7 @@ const Register = () => {
             )}
 
             <button className="primary" type="submit" disabled={loading}>
-              {loading ? "Creating account..." : "Register"}
+              {loading ? t("auth.creating") : t("auth.register")}
             </button>
 
             {error && <p className="form-error">{error}</p>}

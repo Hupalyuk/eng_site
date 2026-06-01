@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { getApiBase } from "../lib/apiBase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -15,9 +16,9 @@ const CLASS_FALLBACK = {
 
 const pad = (value) => String(value).padStart(2, "0");
 
-function formatDateHuman(value) {
+function formatDateHuman(value, language) {
   const date = new Date(value);
-  return date.toLocaleDateString("uk-UA", {
+  return date.toLocaleDateString(language === "ua" ? "uk-UA" : "en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -25,12 +26,12 @@ function formatDateHuman(value) {
   });
 }
 
-function formatTimeRange(startValue, endValue) {
+function formatTimeRange(startValue, endValue, t) {
   const start = new Date(startValue);
   const end = new Date(endValue);
   const startTime = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
   const endTime = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
-  return `${startTime} - ${endTime} (1 год)`;
+  return `${startTime} - ${endTime} (${t("classPage.hourShort")})`;
 }
 
 // function createGoogleCalendarEventUrl(startDate, endDate, title, teacher, meetLink) {
@@ -106,6 +107,7 @@ function buildMonthMatrix(viewDate) {
 
 function ClassPage() {
   const { user } = useAuth();
+  const { t, i18n } = useTranslation();
   const apiBase = getApiBase();
   const [classData, setClassData] = useState(null);
   const [error, setError] = useState("");
@@ -181,12 +183,12 @@ function ClassPage() {
         const response = await fetch(`${apiBase}/api/class/next${groupQuery}`, { credentials: "include" });
         const payload = await response.json();
         if (!response.ok) {
-          throw new Error(payload?.error || "Не вдалося завантажити дані заняття.");
+          throw new Error(payload?.error || t("classPage.errors.loadClass"));
         }
         setClassData(payload);
         setMeetInput(payload?.meetLink && payload.meetLink !== "https://meet.google.com/" ? payload.meetLink : "");
       } catch (err) {
-        setError(err.message || "Не вдалося завантажити дані заняття.");
+        setError(err.message || t("classPage.errors.loadClass"));
       }
     };
     load();
@@ -199,10 +201,10 @@ function ClassPage() {
         setHomeworksLoading(true);
         const response = await fetch(`${apiBase}/api/class/homeworks`, { credentials: "include" });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload?.error || "Не вдалося завантажити домашні завдання.");
+        if (!response.ok) throw new Error(payload?.error || t("classPage.errors.loadHomeworks"));
         setHomeworks(Array.isArray(payload?.homeworks) ? payload.homeworks : []);
       } catch (err) {
-        setError((prev) => prev || err?.message || "Не вдалося завантажити домашні завдання.");
+        setError((prev) => prev || err?.message || t("classPage.errors.loadHomeworks"));
       } finally {
         setHomeworksLoading(false);
       }
@@ -217,10 +219,10 @@ function ClassPage() {
         setMaterialsLoading(true);
         const response = await fetch(`${apiBase}/api/class/materials`, { credentials: "include" });
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload?.error || "Не вдалося завантажити матеріали.");
+        if (!response.ok) throw new Error(payload?.error || t("classPage.errors.loadMaterials"));
         setMaterials(Array.isArray(payload?.materials) ? payload.materials : []);
       } catch (err) {
-        setError((prev) => prev || err?.message || "Не вдалося завантажити матеріали.");
+        setError((prev) => prev || err?.message || t("classPage.errors.loadMaterials"));
       } finally {
         setMaterialsLoading(false);
       }
@@ -252,11 +254,11 @@ function ClassPage() {
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
           if (payload?.needsGoogleConnect) setGoogleConnected(false);
-          throw new Error(payload?.error || "Не вдалося завантажити календар.");
+          throw new Error(payload?.error || t("classPage.errors.loadCalendar"));
         }
         setCalendarEvents(Array.isArray(payload?.events) ? payload.events : []);
       } catch (err) {
-        setError((prev) => prev || err.message || "Не вдалося завантажити календар.");
+        setError((prev) => prev || err.message || t("classPage.errors.loadCalendar"));
       } finally {
         setCalendarLoading(false);
       }
@@ -271,17 +273,17 @@ function ClassPage() {
         const response = await fetch(`${apiBase}/api/class/events`, { credentials: "include" });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(payload?.error || "Failed to load local events.");
+          throw new Error(payload?.error || t("classPage.errors.loadEvents"));
         }
         setCustomEvents(Array.isArray(payload?.events) ? payload.events : []);
       } catch (err) {
-        setError((prev) => prev || err.message || "Failed to load local events.");
+        setError((prev) => prev || err.message || t("classPage.errors.loadEvents"));
       }
     };
     loadCustomEvents();
   }, [apiBase, user]);
 
-  const groupName = classData?.groupName || "Групу ще не призначено";
+  const groupName = classData?.groupName || t("classPage.noGroup");
   const lessonStart = classData?.lesson?.startAt || CLASS_FALLBACK.startDate;
   const lessonEnd = classData?.lesson?.endAt || CLASS_FALLBACK.endDate;
   const lessonTitle = classData?.lesson?.title || CLASS_FALLBACK.title;
@@ -290,7 +292,7 @@ function ClassPage() {
 
   const handleJoinMeet = () => {
     if (!hasRealMeetLink) {
-      setError("Викладач ще не додав посилання на Google Meet.");
+      setError(t("classPage.errors.noMeet"));
       return;
     }
     window.open(meetLink, "_blank", "noopener,noreferrer");
@@ -307,7 +309,7 @@ function ClassPage() {
         body: JSON.stringify({ meetLink: meetInput, groupName, groupId: selectedGroupId ? Number(selectedGroupId) : undefined }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || "Не вдалося зберегти посилання Google Meet.");
+      if (!response.ok) throw new Error(payload?.error || t("classPage.errors.saveMeet"));
 
       setClassData((prev) => ({
         ...(prev || {}),
@@ -315,7 +317,7 @@ function ClassPage() {
         groupName: payload.groupName || groupName,
       }));
     } catch (err) {
-      setError(err?.message || "Не вдалося зберегти посилання Google Meet.");
+      setError(err?.message || t("classPage.errors.saveMeet"));
     } finally {
       setSaveLoading(false);
     }
@@ -327,10 +329,10 @@ function ClassPage() {
       setError("");
       const response = await fetch(`${apiBase}/api/google/connect`, { credentials: "include" });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !payload?.url) throw new Error(payload?.error || "Не вдалося підключити Google Calendar.");
+      if (!response.ok || !payload?.url) throw new Error(payload?.error || t("classPage.errors.connectGoogle"));
       window.location.href = payload.url;
     } catch (err) {
-      setError(err?.message || "Не вдалося підключити Google Calendar.");
+      setError(err?.message || t("classPage.errors.connectGoogle"));
     } finally {
       setGoogleLoading(false);
     }
@@ -344,7 +346,7 @@ function ClassPage() {
     const response = await fetch(`${apiBase}/api/class/events`, { credentials: "include" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(payload?.error || "Failed to refresh local events.");
+      throw new Error(payload?.error || t("classPage.errors.refreshEvents"));
     }
     setCustomEvents(Array.isArray(payload?.events) ? payload.events : []);
   };
@@ -368,7 +370,7 @@ function ClassPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload?.error || "Failed to create event.");
+        throw new Error(payload?.error || t("classPage.errors.createEvent"));
       }
 
       const createdEvent = payload.event;
@@ -376,7 +378,7 @@ function ClassPage() {
 
       if (syncAndOpen) {
         if (!googleConnected) {
-          throw new Error("Спочатку підключіть Google Calendar.");
+          throw new Error(t("classPage.errors.connectFirst"));
         }
 
         const syncResponse = await fetch(`${apiBase}/api/class/events/${createdEvent.id}/sync`, {
@@ -386,7 +388,7 @@ function ClassPage() {
         const syncPayload = await syncResponse.json().catch(() => ({}));
         if (!syncResponse.ok) {
           if (syncPayload?.needsGoogleConnect) setGoogleConnected(false);
-          throw new Error(syncPayload?.error || "Failed to sync event.");
+          throw new Error(syncPayload?.error || t("classPage.errors.syncEvent"));
         }
 
         await reloadCustomEvents();
@@ -403,7 +405,7 @@ function ClassPage() {
         endAt: "",
       });
     } catch (err) {
-      setError(err?.message || "Failed to create event.");
+      setError(err?.message || t("classPage.errors.createEvent"));
     } finally {
       setCreateLoading(false);
     }
@@ -433,7 +435,7 @@ function ClassPage() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (payload?.needsGoogleConnect) setGoogleConnected(false);
-        throw new Error(payload?.error || "Не вдалося видалити подію.");
+        throw new Error(payload?.error || t("classPage.errors.deleteEvent"));
       }
 
       setCustomEvents((prev) => prev.filter((item) => Number(item.id) !== Number(eventId)));
@@ -445,15 +447,15 @@ function ClassPage() {
         }
       }
     } catch (err) {
-      setError(err?.message || "Не вдалося видалити подію.");
+      setError(err?.message || t("classPage.errors.deleteEvent"));
     }
   };
 
   const handleUploadMaterial = async () => {
     try {
       setError("");
-      if (!materialTitle.trim()) throw new Error("Вкажіть назву матеріалу.");
-      if (!materialFile) throw new Error("Оберіть файл.");
+      if (!materialTitle.trim()) throw new Error(t("classPage.errors.materialTitle"));
+      if (!materialFile) throw new Error(t("classPage.errors.materialFile"));
 
       setMaterialUploading(true);
       const form = new FormData();
@@ -466,13 +468,13 @@ function ClassPage() {
         body: form,
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || "Не вдалося завантажити файл.");
+      if (!response.ok) throw new Error(payload?.error || t("classPage.errors.uploadFile"));
 
       setMaterials((prev) => [payload.material, ...prev]);
       setMaterialTitle("");
       setMaterialFile(null);
     } catch (err) {
-      setError(err?.message || "Не вдалося завантажити файл.");
+      setError(err?.message || t("classPage.errors.uploadFile"));
     } finally {
       setMaterialUploading(false);
     }
@@ -490,10 +492,10 @@ function ClassPage() {
         credentials: "include",
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || "Не вдалося видалити матеріал.");
+      if (!response.ok) throw new Error(payload?.error || t("classPage.errors.deleteMaterial"));
       setMaterials((prev) => prev.filter((item) => Number(item.id) !== Number(materialId)));
     } catch (err) {
-      setError(err?.message || "Не вдалося видалити матеріал.");
+      setError(err?.message || t("classPage.errors.deleteMaterial"));
     }
   };
 
@@ -504,8 +506,8 @@ function ClassPage() {
   const handleUploadHomework = async () => {
     try {
       setError("");
-      if (!homeworkTitle.trim()) throw new Error("Вкажіть назву домашнього завдання.");
-      if (!homeworkFile) throw new Error("Оберіть файл домашнього завдання.");
+      if (!homeworkTitle.trim()) throw new Error(t("classPage.errors.homeworkTitle"));
+      if (!homeworkFile) throw new Error(t("classPage.errors.homeworkFile"));
 
       setHomeworkUploading(true);
       const form = new FormData();
@@ -519,14 +521,14 @@ function ClassPage() {
         body: form,
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || "Не вдалося завантажити домашнє завдання.");
+      if (!response.ok) throw new Error(payload?.error || t("classPage.errors.uploadHomework"));
 
       setHomeworks((prev) => [payload.homework, ...prev]);
       setHomeworkTitle("");
       setHomeworkDue("");
       setHomeworkFile(null);
     } catch (err) {
-      setError(err?.message || "Не вдалося завантажити домашнє завдання.");
+      setError(err?.message || t("classPage.errors.uploadHomework"));
     } finally {
       setHomeworkUploading(false);
     }
@@ -540,15 +542,15 @@ function ClassPage() {
         credentials: "include",
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || "Не вдалося видалити домашнє завдання.");
+      if (!response.ok) throw new Error(payload?.error || t("classPage.errors.deleteHomework"));
       setHomeworks((prev) => prev.filter((item) => Number(item.id) !== Number(homeworkId)));
     } catch (err) {
-      setError(err?.message || "Не вдалося видалити домашнє завдання.");
+      setError(err?.message || t("classPage.errors.deleteHomework"));
     }
   };
 
-  const eventDate = useMemo(() => formatDateHuman(lessonStart), [lessonStart]);
-  const eventTime = useMemo(() => formatTimeRange(lessonStart, lessonEnd), [lessonStart, lessonEnd]);
+  const eventDate = useMemo(() => formatDateHuman(lessonStart, i18n.language), [i18n.language, lessonStart]);
+  const eventTime = useMemo(() => formatTimeRange(lessonStart, lessonEnd, t), [lessonStart, lessonEnd, t]);
   // const calendarEventUrl = useMemo(
   //   () => createGoogleCalendarEventUrl(lessonStart, lessonEnd, lessonTitle, CLASS_FALLBACK.teacher, meetLink),
   //   [lessonStart, lessonEnd, lessonTitle, meetLink]
@@ -563,16 +565,16 @@ function ClassPage() {
     const seconds = Math.floor((diff / 1000) % 60);
 
     return [
-      { label: "ДНІ", value: pad(days) },
-      { label: "ГОД", value: pad(hours) },
-      { label: "ХВ", value: pad(minutes) },
-      { label: "СЕК", value: pad(seconds) },
+      { label: t("classPage.countdown.days"), value: pad(days) },
+      { label: t("classPage.countdown.hours"), value: pad(hours) },
+      { label: t("classPage.countdown.minutes"), value: pad(minutes) },
+      { label: t("classPage.countdown.seconds"), value: pad(seconds) },
     ];
-  }, [lessonStart, now]);
+  }, [lessonStart, now, t]);
 
   const monthName = useMemo(
-    () => calendarMonth.toLocaleDateString("uk-UA", { month: "long", year: "numeric" }),
-    [calendarMonth]
+    () => calendarMonth.toLocaleDateString(i18n.language === "ua" ? "uk-UA" : "en-US", { month: "long", year: "numeric" }),
+    [calendarMonth, i18n.language]
   );
   const monthWeeks = useMemo(() => buildMonthMatrix(calendarMonth), [calendarMonth]);
   const localEventsByDay = useMemo(() => {
@@ -593,7 +595,7 @@ function ClassPage() {
     const groups = new Map();
     materials.forEach((item) => {
       const key = toLocalDayKey(item.createdAt);
-      const label = new Date(item.createdAt).toLocaleDateString("uk-UA", {
+      const label = new Date(item.createdAt).toLocaleDateString(i18n.language === "ua" ? "uk-UA" : "en-US", {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -605,7 +607,7 @@ function ClassPage() {
     return Array.from(groups.entries())
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([, value]) => value);
-  }, [materials]);
+  }, [i18n.language, materials]);
 
   useEffect(() => {
     setEventForm((prev) => {
@@ -1028,4 +1030,3 @@ function ClassPage() {
 }
 
 export default ClassPage;
-

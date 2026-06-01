@@ -99,8 +99,18 @@ async function ensureCourseEnrollmentTables() {
   `);
 
   await pool.query(`
+    ALTER TABLE course_groups
+    ADD COLUMN IF NOT EXISTS teacher_id BIGINT REFERENCES users(id) ON DELETE SET NULL;
+  `);
+
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_course_groups_schedule
     ON course_groups (course_code, year, days_key, times_key, member_count);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_course_groups_teacher_id
+    ON course_groups (teacher_id);
   `);
 
   await pool.query(`
@@ -121,6 +131,16 @@ async function ensureCourseEnrollmentTables() {
   `);
 
   await pool.query(`
+    ALTER TABLE course_group_members
+    ADD COLUMN IF NOT EXISTS status VARCHAR(32) NOT NULL DEFAULT 'new';
+  `);
+
+  await pool.query(`
+    ALTER TABLE course_group_members
+    ADD COLUMN IF NOT EXISTS admin_note TEXT;
+  `);
+
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_course_group_members_group_id
     ON course_group_members (group_id);
   `);
@@ -128,6 +148,11 @@ async function ensureCourseEnrollmentTables() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_course_group_members_user_id
     ON course_group_members (user_id);
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_course_group_members_status
+    ON course_group_members (status);
   `);
 
   await pool.query(`
@@ -199,6 +224,55 @@ async function ensureCourseEnrollmentTables() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_teacher_documents_user_id
     ON teacher_documents (user_id);
+  `);
+
+  await pool.query(`
+    ALTER TABLE posts
+    ADD COLUMN IF NOT EXISTS status VARCHAR(32) NOT NULL DEFAULT 'published';
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_posts_status_created
+    ON posts (status, created_at DESC);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_audit_logs (
+      id BIGSERIAL PRIMARY KEY,
+      admin_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+      action VARCHAR(120) NOT NULL,
+      entity_type VARCHAR(80) NOT NULL,
+      entity_id BIGINT,
+      details JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_admin_audit_logs_created
+    ON admin_audit_logs (created_at DESC);
+  `);
+
+  await pool.query(`
+    UPDATE course_groups cg
+    SET member_count = approved_members.count
+    FROM (
+      SELECT group_id, COUNT(*)::int AS count
+      FROM course_group_members
+      WHERE status = 'approved'
+      GROUP BY group_id
+    ) approved_members
+    WHERE cg.id = approved_members.group_id;
+  `);
+
+  await pool.query(`
+    UPDATE course_groups cg
+    SET member_count = 0
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM course_group_members cgm
+      WHERE cgm.group_id = cg.id AND cgm.status = 'approved'
+    );
   `);
 }
 

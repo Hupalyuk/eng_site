@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
 
 const Blog = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -15,7 +17,7 @@ const Blog = () => {
     const contentType = response.headers.get("content-type") || "";
     const text = await response.text();
     if (!contentType.includes("application/json")) {
-      throw new Error("API error: expected JSON response. Check VITE_API_BASE and backend.");
+      throw new Error(t("common.apiJsonError"));
     }
     return JSON.parse(text);
   };
@@ -28,11 +30,11 @@ const Blog = () => {
       });
       const payload = await readJson(response);
       if (!response.ok) {
-        throw new Error(payload?.error || "Failed to load posts.");
+        throw new Error(payload?.error || t("blog.errors.load"));
       }
       setPosts(payload);
     } catch (err) {
-      setError(err.message || "Failed to load posts.");
+      setError(err.message || t("blog.errors.load"));
     } finally {
       setLoading(false);
     }
@@ -53,7 +55,7 @@ const Blog = () => {
   const deletePost = async (postId) => {
     setError("");
 
-    const confirmed = window.confirm("Delete this post?");
+    const confirmed = window.confirm(t("blog.confirmDelete"));
     if (!confirmed) return;
 
     try {
@@ -63,11 +65,11 @@ const Blog = () => {
       });
       const payload = await readJson(response);
       if (!response.ok) {
-        throw new Error(payload?.error || "Failed to delete post.");
+        throw new Error(payload?.error || t("blog.errors.delete"));
       }
       setPosts((prev) => prev.filter((post) => post.id !== postId));
     } catch (err) {
-      setError(err.message || "Failed to delete post.");
+      setError(err.message || t("blog.errors.delete"));
     }
   };
 
@@ -82,14 +84,14 @@ const Blog = () => {
   const getTitle = (text = "") => {
     const { title, description } = splitPostText(text);
     const base = title || description;
-    if (!base) return "Untitled post";
+    if (!base) return t("blog.untitled");
     return base.length > 64 ? `${base.slice(0, 64)}...` : base;
   };
 
   const getExcerpt = (text = "") => {
     const { title, description } = splitPostText(text);
     const base = description || title;
-    if (!base) return "No description yet.";
+    if (!base) return t("blog.noDescription");
     return base.length > 140 ? `${base.slice(0, 140)}...` : base;
   };
 
@@ -105,34 +107,33 @@ const Blog = () => {
     <div id="blog-root" className="blog-container">
       <div className="blog-page">
         <div className="blog-cell">
-          <h1>Welcome to the TOTC Blog</h1>
+          <h1>{t("blog.title")}</h1>
           <p>
-            Here you will find the latest news, updates, and insights about our virtual classroom for Meet.
-            Stay tuned for upcoming articles on how to make the most of your online learning experience with TOTC!
+            {t("blog.desc")}
           </p>
-          <button className="blog-btn-header">Start learning now</button>
+          <button className="blog-btn-header">{t("blog.cta")}</button>
         </div>
         <img className="img-blog-header" src="/images/blog/blog-header.png" alt="Blog-header" />
       </div>
 
       <section className="blog-feed">
         <div className="blog-feed-header">
-          <h2>Community posts</h2>
+          <h2>{t("blog.feedTitle")}</h2>
           <Link className="btn btn-light" to="/create-post">
-            Create post
+            {t("blog.create")}
           </Link>
         </div>
 
         {!user && (
-          <p className="post-hint">Log in to create posts, edit, or delete your own content.</p>
+          <p className="post-hint">{t("blog.loginHint")}</p>
         )}
 
         {error && <p className="form-error">{error}</p>}
 
         {loading ? (
-          <p className="post-hint">Loading posts...</p>
+          <p className="post-hint">{t("blog.loading")}</p>
         ) : posts.length === 0 ? (
-          <p className="post-hint">No posts yet. Be the first to share something.</p>
+          <p className="post-hint">{t("blog.empty")}</p>
         ) : (
           <div className="post-list">
             {posts.map((post) => {
@@ -170,19 +171,19 @@ const Blog = () => {
                       {isOwner ? (
                         <div className="post-owner-actions">
                           <Link className="btn btn-light btn-sm" to={`/edit-post/${post.id}`}>
-                            Edit
+                            {t("blog.edit")}
                           </Link>
                           <button
                             className="btn btn-danger btn-sm"
                             type="button"
                             onClick={() => deletePost(post.id)}
                           >
-                            Delete
+                            {t("blog.delete")}
                           </button>
                         </div>
                       ) : (
                         <button className="link-btn" type="button">
-                          Read more
+                          {t("blog.readMore")}
                         </button>
                       )}
                       <span className="post-meta-small">{dateLabel}</span>

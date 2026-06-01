@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
 
@@ -15,6 +16,7 @@ const EditPost = () => {
   const { user } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const postId = useMemo(() => Number(id), [id]);
 
@@ -39,7 +41,7 @@ const EditPost = () => {
     const contentType = response.headers.get("content-type") || "";
     const text = await response.text();
     if (!contentType.includes("application/json")) {
-      throw new Error("API error: expected JSON response. Check VITE_API_BASE and backend.");
+      throw new Error(t("common.apiJsonError"));
     }
     return JSON.parse(text);
   };
@@ -74,7 +76,7 @@ const EditPost = () => {
     }
 
     if (!file.type?.startsWith("image/")) {
-      setError("Please choose an image file (PNG, JPG, WEBP, ...).");
+      setError(t("post.errors.image"));
       return;
     }
 
@@ -88,7 +90,7 @@ const EditPost = () => {
 
     const load = async () => {
       if (!postId) {
-        setError("Invalid post id.");
+        setError(t("post.errors.invalidId"));
         setLoading(false);
         return;
       }
@@ -99,16 +101,16 @@ const EditPost = () => {
         const response = await fetch(`${apiBase}/api/posts`, { credentials: "include" });
         const payload = await readJson(response);
         if (!response.ok) {
-          throw new Error(payload?.error || "Failed to load post.");
+          throw new Error(payload?.error || t("post.errors.load"));
         }
 
         const post = Array.isArray(payload) ? payload.find((p) => p.id === postId) : null;
         if (!post) {
-          throw new Error("Post not found.");
+          throw new Error(t("post.errors.notFound"));
         }
 
         if (!user || post.user_id !== user.id) {
-          throw new Error("You can only edit your own posts.");
+          throw new Error(t("post.errors.owner"));
         }
 
         const { title: loadedTitle, description: loadedDescription } = splitPostText(post.content);
@@ -118,7 +120,7 @@ const EditPost = () => {
         setDescription(loadedDescription);
         setExistingImageUrl(resolveImageUrl(post.image_url));
       } catch (err) {
-        if (active) setError(err.message || "Failed to load post.");
+        if (active) setError(err.message || t("post.errors.load"));
       } finally {
         if (active) setLoading(false);
       }
@@ -129,18 +131,18 @@ const EditPost = () => {
     return () => {
       active = false;
     };
-  }, [apiBase, postId, resolveImageUrl, user]);
+  }, [apiBase, postId, resolveImageUrl, t, user]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
     if (!title.trim()) {
-      setError("Please add a topic for your post.");
+      setError(t("post.errors.topic"));
       return;
     }
     if (!description.trim()) {
-      setError("Please add a short description.");
+      setError(t("post.errors.description"));
       return;
     }
 
@@ -163,11 +165,11 @@ const EditPost = () => {
       });
       const payload = await readJson(response);
       if (!response.ok) {
-        throw new Error(payload?.error || "Failed to update post.");
+        throw new Error(payload?.error || t("post.errors.update"));
       }
       navigate("/blog");
     } catch (err) {
-      setError(err.message || "Failed to update post.");
+      setError(err.message || t("post.errors.update"));
     } finally {
       setSubmitting(false);
     }
@@ -179,22 +181,22 @@ const EditPost = () => {
     <main className="page">
       <section className="blog-feed">
         <div className="blog-feed-header">
-          <h2>Edit post</h2>
+          <h2>{t("post.editTitle")}</h2>
         </div>
 
         {!user ? (
-          <p className="post-hint">Please log in to edit posts.</p>
+          <p className="post-hint">{t("post.loginEdit")}</p>
         ) : loading ? (
-          <p className="post-hint">Loading post...</p>
+          <p className="post-hint">{t("post.loading")}</p>
         ) : (
           <form className="post-form" onSubmit={handleSubmit}>
             <label className="field" htmlFor={titleInputId}>
-              <span>Topic</span>
+              <span>{t("post.topic")}</span>
               <input
                 id={titleInputId}
                 className="post-input"
                 type="text"
-                placeholder="e.g. My experience with TOTC"
+                placeholder={t("post.topicPlaceholder")}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 maxLength={90}
@@ -202,19 +204,19 @@ const EditPost = () => {
             </label>
 
             <label className="field" htmlFor={descriptionInputId}>
-              <span>Description</span>
+              <span>{t("post.description")}</span>
               <textarea
                 id={descriptionInputId}
                 className="post-textarea"
                 rows="6"
-                placeholder="Write something helpful for other students..."
+                placeholder={t("post.descriptionPlaceholder")}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
               />
             </label>
 
             <div className="field">
-              <span>Photo (optional)</span>
+              <span>{t("post.photo")}</span>
               <div
                 className={`image-dropzone${isDragActive ? " is-drag-active" : ""}${
                   previewSrc ? " has-image" : ""
@@ -253,7 +255,7 @@ const EditPost = () => {
               >
                 {previewSrc ? (
                   <>
-                    <img className="image-preview" src={previewSrc} alt="Selected upload" />
+                    <img className="image-preview" src={previewSrc} alt={t("post.selectedAlt")} />
                     <div className="image-actions" onClick={(event) => event.stopPropagation()}>
                       {(existingImageUrl || imageFile) && (
                         <button
@@ -264,7 +266,7 @@ const EditPost = () => {
                             if (existingImageUrl) setRemoveExistingImage(true);
                           }}
                         >
-                          Remove
+                          {t("common.remove")}
                         </button>
                       )}
                       <button
@@ -272,7 +274,7 @@ const EditPost = () => {
                         type="button"
                         onClick={() => document.getElementById(imageInputId)?.click()}
                       >
-                        Change
+                        {t("common.change")}
                       </button>
                     </div>
                   </>
@@ -284,8 +286,8 @@ const EditPost = () => {
                       </svg>
                     </div>
                     <div className="image-dropzone-text">
-                      <strong>Drop your photo here</strong>
-                      <span>or click to browse (PNG/JPG/WEBP)</span>
+                      <strong>{t("post.dropPhoto")}</strong>
+                      <span>{t("post.browsePhoto")}</span>
                     </div>
                   </div>
                 )}
@@ -299,16 +301,16 @@ const EditPost = () => {
                 onChange={(event) => acceptImageFromInput(event.target.files?.[0] || null)}
               />
               <p id={`${imageInputId}-help`} className="image-help">
-                If you don't upload a new photo, the current one will stay.
+                {t("post.imageHelpEdit")}
               </p>
             </div>
 
             <div className="post-form-actions">
               <button className="btn btn-ghost" type="button" onClick={() => navigate("/blog")} disabled={submitting}>
-                Cancel
+                {t("common.cancel")}
               </button>
               <button className="primary" type="submit" disabled={submitting}>
-                {submitting ? "Saving..." : "Save changes"}
+                {submitting ? t("post.saving") : t("post.saveChanges")}
               </button>
             </div>
           </form>

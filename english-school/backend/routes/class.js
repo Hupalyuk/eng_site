@@ -87,7 +87,7 @@ async function findLatestGroupByUser(userId) {
      FROM course_group_members cgm
      JOIN course_groups cg ON cg.id = cgm.group_id
      JOIN users u ON u.id = cgm.user_id
-     WHERE cgm.user_id = $1
+     WHERE cgm.user_id = $1 AND cgm.status = 'approved'
      ORDER BY cgm.created_at DESC
      LIMIT 1`,
     [userId]
@@ -104,7 +104,7 @@ async function findLatestGroupByUser(userId) {
     `SELECT cgm.id AS member_id, cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link, cg.meet_space_name
      FROM course_group_members cgm
      JOIN course_groups cg ON cg.id = cgm.group_id
-     WHERE LOWER(cgm.email) = LOWER($1)
+     WHERE LOWER(cgm.email) = LOWER($1) AND cgm.status = 'approved'
      ORDER BY cgm.created_at DESC
      LIMIT 1`,
     [userEmail]

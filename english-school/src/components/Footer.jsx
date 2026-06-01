@@ -1,4 +1,8 @@
-﻿export default function Footer() {
+import { useTranslation } from "react-i18next";
+
+export default function Footer() {
+  const { t } = useTranslation();
+
   return (
     <div className="site-footer">
       <div className="footer-inner">
@@ -7,29 +11,34 @@
             <span>TOTC</span>
           </div>
           <p>
-            Virtual Class
-            <br />
-            for Zoom
+            {t("footer.product")
+              .split("\n")
+              .map((line) => (
+                <span key={line}>
+                  {line}
+                  <br />
+                </span>
+              ))}
           </p>
         </div>
 
         <div className="footer-newsletter">
-          <h3>Subscribe to get our Newsletter</h3>
+          <h3>{t("footer.newsletterTitle")}</h3>
           <form className="newsletter-form">
-            <input type="email" placeholder="Your Email" />
-            <button type="submit">Subscribe</button>
+            <input type="email" placeholder={t("footer.emailPlaceholder")} />
+            <button type="submit">{t("footer.subscribe")}</button>
           </form>
         </div>
 
         <div className="footer-links">
-          <a href="/class">Class</a>
+          <a href="/class">{t("nav.class")}</a>
           <span>|</span>
-          <a href="#privacy">Privacy Policy</a>
+          <a href="#privacy">{t("footer.privacy")}</a>
           <span>|</span>
-          <a href="#terms">Terms &amp; Conditions</a>
+          <a href="#terms">{t("footer.terms")}</a>
         </div>
-        <div className="footer-copy">© 2021 Class Technologies Inc.</div>
+        <div className="footer-copy">{t("footer.copy")}</div>
       </div>
     </div>
-  )
+  );
 }

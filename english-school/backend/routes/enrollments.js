@@ -101,26 +101,16 @@ router.post('/', requireAuth, async (req, res, next) => {
     }
 
     await client.query(
-      `INSERT INTO course_group_members (group_id, user_id, full_name, phone, email)
-       VALUES ($1, $2, $3, $4, $5)`,
+      `INSERT INTO course_group_members (group_id, user_id, full_name, phone, email, status)
+       VALUES ($1, $2, $3, $4, $5, 'new')`,
       [groupId, req.session.userId, safeName, safePhone, safeEmail]
     );
-
-    const updateResult = await client.query(
-      `UPDATE course_groups
-       SET member_count = member_count + 1
-       WHERE id = $1 AND member_count < 5`,
-      [groupId]
-    );
-
-    if (updateResult.rowCount !== 1) {
-      throw new Error('Group is full. Please try again.');
-    }
 
     await client.query('COMMIT');
     res.status(201).json({
       ok: true,
-      group: { id: groupId, name: groupName, course: courseCode.toUpperCase(), year: year2 },
+      status: 'new',
+      pendingGroup: { id: groupId, name: groupName, course: courseCode.toUpperCase(), year: year2 },
     });
   } catch (error) {
     if (client) {

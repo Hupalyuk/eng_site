@@ -1,67 +1,60 @@
-export const COURSE_CATEGORIES = [
-  { id: "all", label: "Усі курси" },
-  { id: "beginner", label: "Для початківців" },
-  { id: "speaking", label: "Розмовна англійська" },
-  { id: "exams", label: "Підготовка до іспитів" },
-  { id: "business", label: "Бізнес-англійська" },
-];
+const COURSE_CATEGORY_IDS = ["all", "beginner", "speaking", "exams", "business"];
 
-export const COURSES = [
+const COURSE_DEFINITIONS = [
   {
     id: "a1",
-    title: "Beginner (A1)",
-    tag: "Для початківців",
     category: "beginner",
-    description: "Курс для тих, хто тільки починає вивчати англійську.",
-    duration: "8 тижнів",
-    lessons: "2 рази на тиждень",
-    format: "онлайн",
-    price: "3 000 грн",
     icon: "chat",
     accent: "green",
   },
   {
     id: "b1",
-    title: "Intermediate (B1)",
-    tag: "Розмовна англійська",
     category: "speaking",
-    description: "Покращуй свої навички та говори впевненіше.",
-    duration: "10 тижнів",
-    lessons: "2 рази на тиждень",
-    format: "онлайн",
-    price: "4 000 грн",
     icon: "bubble",
     accent: "yellow",
   },
   {
     id: "ielts",
-    title: "IELTS Preparation",
-    tag: "Підготовка до іспитів",
     category: "exams",
-    description: "Комплексна підготовка до іспиту IELTS.",
-    duration: "12 тижнів",
-    lessons: "3 рази на тиждень",
-    format: "онлайн",
-    price: "5 500 грн",
     icon: "badge",
     accent: "purple",
   },
   {
     id: "biz",
-    title: "Business English",
-    tag: "Бізнес-англійська",
     category: "business",
-    description: "Англійська для роботи, зустрічей та переговорів.",
-    duration: "8 тижнів",
-    lessons: "2 рази на тиждень",
-    format: "онлайн",
-    price: "4 500 грн",
     icon: "briefcase",
     accent: "blue",
   },
 ];
 
-export function getCourseById(courseId) {
-  return COURSES.find((course) => course.id === courseId) || null;
+const withFallback = (t, key, fallback) => (typeof t === "function" ? t(key, fallback) : fallback);
+
+const localizeCourse = (course, t) => ({
+  ...course,
+  title: withFallback(t, `courses.items.${course.id}.title`, course.id),
+  tag: withFallback(t, `courses.items.${course.id}.tag`, course.category),
+  description: withFallback(t, `courses.items.${course.id}.description`, ""),
+  duration: withFallback(t, `courses.items.${course.id}.duration`, ""),
+  lessons: withFallback(t, `courses.items.${course.id}.lessons`, ""),
+  format: withFallback(t, `courses.items.${course.id}.format`, ""),
+  price: withFallback(t, `courses.items.${course.id}.price`, ""),
+});
+
+export const COURSE_CATEGORIES = COURSE_CATEGORY_IDS.map((id) => ({ id, label: id }));
+export const COURSES = COURSE_DEFINITIONS.map((course) => localizeCourse(course));
+
+export function getLocalizedCourseCategories(t) {
+  return COURSE_CATEGORY_IDS.map((id) => ({
+    id,
+    label: withFallback(t, `courses.categories.${id}`, id),
+  }));
 }
 
+export function getLocalizedCourses(t) {
+  return COURSE_DEFINITIONS.map((course) => localizeCourse(course, t));
+}
+
+export function getCourseById(courseId, t) {
+  const course = COURSE_DEFINITIONS.find((item) => item.id === courseId);
+  return course ? localizeCourse(course, t) : null;
+}

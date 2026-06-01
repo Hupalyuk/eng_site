@@ -1,19 +1,11 @@
 import React, { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { getCourseById } from "../data/courses.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
 
-const DAYS = [
-  { id: "mon", label: "Пн" },
-  { id: "tue", label: "Вт" },
-  { id: "wed", label: "Ср" },
-  { id: "thu", label: "Чт" },
-  { id: "fri", label: "Пт" },
-  { id: "sat", label: "Сб" },
-  { id: "sun", label: "Нд" },
-];
-
+const DAY_IDS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const TIMES = ["09:00", "11:00", "13:00", "15:00", "17:00", "19:00"];
 
 const normalizePhone = (value) => value.replace(/[^\d+]/g, "").slice(0, 16);
@@ -32,8 +24,13 @@ function CourseEnroll() {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const { user, loading } = useAuth();
+  const { t, i18n } = useTranslation();
 
-  const course = useMemo(() => getCourseById(courseId), [courseId]);
+  const course = useMemo(() => getCourseById(courseId, t), [courseId, t, i18n.language]);
+  const daysOptions = useMemo(
+    () => DAY_IDS.map((id) => ({ id, label: t(`enroll.days.${id}`) })),
+    [t, i18n.language]
+  );
   const storageKey = useMemo(() => `enrollDraft:${courseId || ""}`, [courseId]);
 
   const nameId = useId();
@@ -89,7 +86,7 @@ function CourseEnroll() {
         return next;
       }
       if (next.size >= 2) {
-        setError("Можна обрати тільки 2 дні.");
+        setError(t("enroll.errors.maxDays"));
         return prev;
       }
       next.add(dayId);
@@ -105,42 +102,52 @@ function CourseEnroll() {
     });
   };
 
+  const resetForm = () => {
+    setDone(false);
+    setGroupName("");
+    setFullName("");
+    setPhone("");
+    setEmail("");
+    setDays(new Set());
+    setTimes(new Set());
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
 
     if (!user) {
-      setError("Щоб подати заявку на курс, потрібно увійти в акаунт.");
+      setError(t("enroll.errors.loginRequired"));
       return;
     }
 
     if (!course) {
-      setError("Course not found.");
+      setError(t("enroll.errors.notFound"));
       return;
     }
 
     if (!fullName.trim()) {
-      setError("Вкажіть прізвище та ім'я.");
+      setError(t("enroll.errors.fullName"));
       return;
     }
 
     if (!phone.trim()) {
-      setError("Вкажіть номер телефону.");
+      setError(t("enroll.errors.phone"));
       return;
     }
 
     if (!email.trim()) {
-      setError("Вкажіть Email.");
+      setError(t("enroll.errors.email"));
       return;
     }
 
     if (days.size !== 2) {
-      setError("Оберіть рівно 2 дні занять.");
+      setError(t("enroll.errors.days"));
       return;
     }
 
     if (times.size !== 1) {
-      setError("Оберіть один вільний час.");
+      setError(t("enroll.errors.time"));
       return;
     }
 
@@ -163,7 +170,7 @@ function CourseEnroll() {
 
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(payload?.error || "Не вдалося відправити заявку. Спробуйте ще раз.");
+        throw new Error(payload?.error || t("enroll.errors.submit"));
       }
 
       setGroupName(payload?.group?.name || "");
@@ -174,7 +181,7 @@ function CourseEnroll() {
         // ignore
       }
     } catch (err) {
-      setError(err?.message || "Не вдалося відправити заявку. Спробуйте ще раз.");
+      setError(err?.message || t("enroll.errors.submit"));
     } finally {
       setSubmitting(false);
     }
@@ -185,12 +192,12 @@ function CourseEnroll() {
       <main className="page">
         <section className="blog-feed">
           <div className="blog-feed-header">
-            <h2>Курс не знайдено</h2>
+            <h2>{t("enroll.notFoundTitle")}</h2>
             <Link className="btn btn-light" to="/courses">
-              До курсів
+              {t("enroll.backToCourses")}
             </Link>
           </div>
-          <p className="post-hint">Спробуйте повернутися на сторінку курсів.</p>
+          <p className="post-hint">{t("enroll.notFoundHint")}</p>
         </section>
       </main>
     );
@@ -201,15 +208,15 @@ function CourseEnroll() {
       <main className="page">
         <section className="blog-feed">
           <div className="blog-feed-header">
-            <h2>Реєстрація на курс</h2>
+            <h2>{t("enroll.title")}</h2>
             <Link className="btn btn-light" to="/login">
-              Увійти
+              {t("enroll.login")}
             </Link>
           </div>
           {loading ? (
-            <p className="post-hint">Перевіряємо акаунт...</p>
+            <p className="post-hint">{t("enroll.checking")}</p>
           ) : (
-            <p className="post-hint">Щоб подати заявку на курс, потрібно увійти в акаунт.</p>
+            <p className="post-hint">{t("enroll.errors.loginRequired")}</p>
           )}
         </section>
       </main>
@@ -222,7 +229,7 @@ function CourseEnroll() {
         <div className="enroll-hero-inner">
           <div className="enroll-breadcrumbs">
             <Link className="enroll-link" to="/courses">
-              Курси
+              {t("enroll.courses")}
             </Link>
             <span aria-hidden="true">/</span>
             <span>{course.title}</span>
@@ -230,14 +237,14 @@ function CourseEnroll() {
 
           <div className="enroll-hero-grid">
             <div>
-              <p className="enroll-eyebrow">РЕЄСТРАЦІЯ НА КУРС</p>
+              <p className="enroll-eyebrow">{t("enroll.eyebrow")}</p>
               <h1 className="enroll-title">{course.title}</h1>
               <p className="enroll-subtitle">{course.description}</p>
 
-              <div className="enroll-badges" aria-label="Course details">
-                <span className="enroll-badge">Тривалість: {course.duration}</span>
-                <span className="enroll-badge">Заняття: {course.lessons}</span>
-                <span className="enroll-badge">Формат: {course.format}</span>
+              <div className="enroll-badges" aria-label={t("enroll.detailsAria")}>
+                <span className="enroll-badge">{t("enroll.duration", { value: course.duration })}</span>
+                <span className="enroll-badge">{t("enroll.lessons", { value: course.lessons })}</span>
+                <span className="enroll-badge">{t("enroll.format", { value: course.format })}</span>
                 <span className="enroll-badge is-strong">{course.price}</span>
               </div>
             </div>
@@ -245,47 +252,37 @@ function CourseEnroll() {
             <div className="enroll-card">
               {done ? (
                 <div className="enroll-done">
-                  <h2>Заявка відправлена</h2>
+                  <h2>{t("enroll.doneTitle")}</h2>
                   <p>
-                    Ми зв'яжемося з вами найближчим часом, щоб підтвердити деталі.
+                    {t("enroll.doneText")}
                     {groupName ? (
                       <>
                         {" "}
-                        Ваша група: <strong className="enroll-group-name">{groupName}</strong>.
+                        <strong className="enroll-group-name">
+                          {t("enroll.group", { group: groupName })}
+                        </strong>
                       </>
                     ) : null}
                   </p>
                   <div className="enroll-done-actions">
                     <button className="btn btn-accent" type="button" onClick={() => navigate("/courses")}>
-                      Повернутися до курсів
+                      {t("enroll.return")}
                     </button>
-                    <button
-                      className="btn btn-outline"
-                      type="button"
-                      onClick={() => {
-                        setDone(false);
-                        setGroupName("");
-                        setFullName("");
-                        setPhone("");
-                        setEmail("");
-                        setDays(new Set());
-                        setTimes(new Set());
-                      }}
-                    >
-                      Нова заявка
+                    <button className="btn btn-outline" type="button" onClick={resetForm}>
+                      {t("enroll.newRequest")}
                     </button>
                   </div>
                 </div>
               ) : (
                 <form className="enroll-form" onSubmit={handleSubmit}>
-                  <h2 className="enroll-form-title">Запис на курс</h2>
+                  <h2 className="enroll-form-title">{t("enroll.formTitle")}</h2>
 
                   <label className="field" htmlFor={nameId}>
-                    <span>Прізвище ім'я</span>
+                    <span>{t("enroll.fullName")}</span>
                     <input
                       id={nameId}
                       type="text"
-                      placeholder="Напр. Іваненко Іван"
+                      placeholder={t("enroll.fullNamePlaceholder")}
                       value={fullName}
                       onChange={(event) => setFullName(event.target.value)}
                       required
@@ -293,7 +290,7 @@ function CourseEnroll() {
                   </label>
 
                   <label className="field" htmlFor={phoneId}>
-                    <span>Номер телефону</span>
+                    <span>{t("enroll.phone")}</span>
                     <input
                       id={phoneId}
                       type="tel"
@@ -305,7 +302,7 @@ function CourseEnroll() {
                   </label>
 
                   <label className="field" htmlFor={emailId}>
-                    <span>Email</span>
+                    <span>{t("common.email")}</span>
                     <input
                       id={emailId}
                       type="email"
@@ -317,9 +314,9 @@ function CourseEnroll() {
                   </label>
 
                   <div className="enroll-picker">
-                    <span className="enroll-label">Оберіть 2 дні (Пн–Нд)</span>
-                    <div className="enroll-chips" role="group" aria-label="Days picker">
-                      {DAYS.map((day) => (
+                    <span className="enroll-label">{t("enroll.chooseDays")}</span>
+                    <div className="enroll-chips" role="group" aria-label={t("enroll.daysAria")}>
+                      {daysOptions.map((day) => (
                         <button
                           key={day.id}
                           className={`enroll-chip${days.has(day.id) ? " is-active" : ""}`}
@@ -333,8 +330,8 @@ function CourseEnroll() {
                   </div>
 
                   <div className="enroll-picker">
-                    <span className="enroll-label">Оберіть 1 вільний час</span>
-                    <div className="enroll-chips" role="group" aria-label="Times picker">
+                    <span className="enroll-label">{t("enroll.chooseTime")}</span>
+                    <div className="enroll-chips" role="group" aria-label={t("enroll.timesAria")}>
                       {TIMES.map((time) => (
                         <button
                           key={time}
@@ -346,13 +343,13 @@ function CourseEnroll() {
                         </button>
                       ))}
                     </div>
-                    <p className="enroll-help">Час можна обрати лише один — ми підтвердимо запис.</p>
+                    <p className="enroll-help">{t("enroll.timeHelp")}</p>
                   </div>
 
                   {error && <p className="form-error">{error}</p>}
 
                   <button className="primary" type="submit" disabled={submitting}>
-                    {submitting ? "Відправляємо..." : "Надіслати заявку"}
+                    {submitting ? t("enroll.sending") : t("enroll.submit")}
                   </button>
                 </form>
               )}

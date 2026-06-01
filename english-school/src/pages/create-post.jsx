@@ -1,11 +1,13 @@
 import React, { useEffect, useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
 
 const CreatePost = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const titleInputId = useId();
   const descriptionInputId = useId();
   const imageInputId = useId();
@@ -24,7 +26,7 @@ const CreatePost = () => {
     const contentType = response.headers.get("content-type") || "";
     const text = await response.text();
     if (!contentType.includes("application/json")) {
-      throw new Error("API error: expected JSON response. Check VITE_API_BASE and backend.");
+      throw new Error(t("common.apiJsonError"));
     }
     return JSON.parse(text);
   };
@@ -34,12 +36,12 @@ const CreatePost = () => {
     setError("");
 
     if (!title.trim()) {
-      setError("Please add a topic for your post.");
+      setError(t("post.errors.topic"));
       return;
     }
 
     if (!description.trim()) {
-      setError("Please add a short description.");
+      setError(t("post.errors.description"));
       return;
     }
 
@@ -59,11 +61,11 @@ const CreatePost = () => {
       });
       const payload = await readJson(response);
       if (!response.ok) {
-        throw new Error(payload?.error || "Failed to create post.");
+        throw new Error(payload?.error || t("post.errors.create"));
       }
       navigate("/blog");
     } catch (err) {
-      setError(err.message || "Failed to create post.");
+      setError(err.message || t("post.errors.create"));
     } finally {
       setSubmitting(false);
     }
@@ -90,7 +92,7 @@ const CreatePost = () => {
     }
 
     if (!file.type?.startsWith("image/")) {
-      setError("Please choose an image file (PNG, JPG, WEBP, ...).");
+      setError(t("post.errors.image"));
       return;
     }
 
@@ -102,20 +104,20 @@ const CreatePost = () => {
     <main className="page">
       <section className="blog-feed">
         <div className="blog-feed-header">
-          <h2>Create a post</h2>
+          <h2>{t("post.createTitle")}</h2>
         </div>
 
         {!user ? (
-          <p className="post-hint">Please log in to create a post.</p>
+          <p className="post-hint">{t("post.loginCreate")}</p>
         ) : (
           <form className="post-form" onSubmit={handleSubmit}>
             <label className="field">
-              <span>Topic</span>
+              <span>{t("post.topic")}</span>
               <input
                 id={titleInputId}
                 className="post-input"
                 type="text"
-                placeholder="e.g. My experience with TOTC"
+                placeholder={t("post.topicPlaceholder")}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 maxLength={90}
@@ -123,19 +125,19 @@ const CreatePost = () => {
             </label>
 
             <label className="field">
-              <span>Description</span>
+              <span>{t("post.description")}</span>
               <textarea
                 id={descriptionInputId}
                 className="post-textarea"
                 rows="6"
-                placeholder="Write something helpful for other students..."
+                placeholder={t("post.descriptionPlaceholder")}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
               />
             </label>
 
             <div className="field">
-              <span>Photo (optional)</span>
+              <span>{t("post.photo")}</span>
               <div
                 className={`image-dropzone${isDragActive ? " is-drag-active" : ""}${
                   imagePreviewUrl ? " has-image" : ""
@@ -174,17 +176,17 @@ const CreatePost = () => {
               >
                 {imagePreviewUrl ? (
                   <>
-                    <img className="image-preview" src={imagePreviewUrl} alt="Selected upload" />
+                    <img className="image-preview" src={imagePreviewUrl} alt={t("post.selectedAlt")} />
                     <div className="image-actions" onClick={(event) => event.stopPropagation()}>
                       <button className="image-btn" type="button" onClick={() => setImageFile(null)}>
-                        Remove
+                        {t("common.remove")}
                       </button>
                       <button
                         className="image-btn is-primary"
                         type="button"
                         onClick={() => document.getElementById(imageInputId)?.click()}
                       >
-                        Change
+                        {t("common.change")}
                       </button>
                     </div>
                   </>
@@ -196,8 +198,8 @@ const CreatePost = () => {
                       </svg>
                     </div>
                     <div className="image-dropzone-text">
-                      <strong>Drop your photo here</strong>
-                      <span>or click to browse (PNG/JPG/WEBP)</span>
+                      <strong>{t("post.dropPhoto")}</strong>
+                      <span>{t("post.browsePhoto")}</span>
                     </div>
                   </div>
                 )}
@@ -211,12 +213,12 @@ const CreatePost = () => {
                 onChange={(event) => acceptImageFromInput(event.target.files?.[0] || null)}
               />
               <p id={`${imageInputId}-help`} className="image-help">
-                A clear photo makes the post more engaging.
+                {t("post.imageHelpCreate")}
               </p>
             </div>
 
             <button className="primary" type="submit" disabled={submitting}>
-              {submitting ? "Posting..." : "Publish post"}
+              {submitting ? t("post.posting") : t("post.publish")}
             </button>
           </form>
         )}

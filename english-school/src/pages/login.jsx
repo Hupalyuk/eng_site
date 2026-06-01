@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
 
 const Login = () => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,7 +29,7 @@ const Login = () => {
     setError("");
 
     if (!email || !password) {
-      setError("Email and password are required.");
+      setError(t("auth.errors.loginRequired"));
       return;
     }
 
@@ -42,7 +44,7 @@ const Login = () => {
 
       const payload = await readJsonSafe(response);
       if (!response.ok) {
-        setError(payload?.error || "Login failed.");
+        setError(payload?.error || t("auth.errors.loginFailed"));
         return;
       }
 
@@ -50,7 +52,7 @@ const Login = () => {
       navigate("/");
     } catch (err) {
       console.error(err);
-      setError("Network error. Please try again.");
+      setError(t("common.networkError"));
     } finally {
       setLoading(false);
     }
@@ -58,7 +60,7 @@ const Login = () => {
 
   return (
     <main className="page">
-      <section className="shell" aria-label="Login layout">
+      <section className="shell" aria-label={t("auth.login")}>
         
         <div className="hero" aria-hidden="true">
           <img
@@ -68,13 +70,13 @@ const Login = () => {
           />
         </div>
 
-        <div className="card" aria-label="????? ??????">
-          <h1>Welcome to lorem..!</h1>
+        <div className="card" aria-label={t("auth.login")}>
+          <h1>{t("auth.loginTitle")}</h1>
 
           <div
             className="pill-switch"
             role="tablist"
-            aria-label="Auth switch"
+            aria-label={t("auth.switchAria")}
           >
             <Link
               className="pill is-active"
@@ -82,7 +84,7 @@ const Login = () => {
               aria-selected="true"
               to="/login"
             >
-              Login
+              {t("auth.login")}
             </Link>
 
             <Link
@@ -91,21 +93,21 @@ const Login = () => {
               aria-selected="false"
               to="/register"
             >
-              Register
+              {t("auth.register")}
             </Link>
           </div>
 
           <p className="intro">
-            Lorem Ipsum is simply dummy text of the printing and typesetting industry.
+            {t("auth.loginIntro")}
           </p>
 
           <form className="form" autoComplete="on" onSubmit={handleSubmit}>
             
             <label className="field">
-              <span>Email</span>
+              <span>{t("common.email")}</span>
               <input
                 type="email"
-                placeholder="Enter your Email"
+                placeholder={t("auth.emailPlaceholder")}
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
@@ -113,12 +115,12 @@ const Login = () => {
             </label>
 
             <label className="field">
-              <span>Password</span>
+              <span>{t("common.password")}</span>
 
               <div className="input-with-icon">
                 <input
                   type="password"
-                  placeholder="Enter your Password"
+                  placeholder={t("auth.passwordPlaceholder")}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   required
@@ -127,7 +129,7 @@ const Login = () => {
                 <button
                   className="icon-btn"
                   type="button"
-                  aria-label="Show password"
+                  aria-label={t("auth.showPassword")}
                 >
                   <svg viewBox="0 0 24 24">
                     <path d="M12 5C6.9 5 3.1 8.3 1.5 12c1.6 3.7 5.4 7 10.5 7s8.9-3.3 10.5-7C20.9 8.3 17.1 5 12 5zm0 11a4 4 0 1 1 0-8 4 4 0 0 1 0 8z" />
@@ -140,16 +142,16 @@ const Login = () => {
             <div className="form-row">
               <label className="checkbox">
                 <input type="checkbox" />
-                <span>Remember me</span>
+                <span>{t("auth.remember")}</span>
               </label>
 
               <a className="link" href="#">
-                Forgot Password ?
+                {t("auth.forgot")}
               </a>
             </div>
 
             <button className="primary" type="submit" disabled={loading}>
-              {loading ? "Signing in..." : "Login"}
+              {loading ? t("auth.signingIn") : t("auth.login")}
             </button>
 
             {error && <p className="form-error">{error}</p>}

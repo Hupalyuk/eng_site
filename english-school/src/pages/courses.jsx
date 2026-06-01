@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { COURSE_CATEGORIES, COURSES } from "../data/courses.js";
+import { useTranslation } from "react-i18next";
+import { getLocalizedCourseCategories, getLocalizedCourses } from "../data/courses.js";
 
 const Icon = ({ name }) => {
   if (name === "briefcase") {
@@ -33,30 +34,34 @@ const Icon = ({ name }) => {
 
 function Courses() {
   const [activeCategory, setActiveCategory] = useState("all");
+  const { t, i18n } = useTranslation();
+  const courseCategories = useMemo(() => getLocalizedCourseCategories(t), [t, i18n.language]);
+  const courses = useMemo(() => getLocalizedCourses(t), [t, i18n.language]);
+  const whyItems = t("courses.why.items", { returnObjects: true });
+  const whyIcons = ["GR", "SP", "ED", "TM"];
+  const whyIconClasses = ["why-icon--green", "why-icon--yellow", "why-icon--purple", "why-icon--blue"];
 
   const filtered = useMemo(() => {
-    if (activeCategory === "all") return COURSES;
-    return COURSES.filter((course) => course.category === activeCategory);
-  }, [activeCategory]);
+    if (activeCategory === "all") return courses;
+    return courses.filter((course) => course.category === activeCategory);
+  }, [activeCategory, courses]);
 
   return (
     <main className="courses-page">
       <section className="courses-hero">
         <div className="courses-hero-inner">
           <div className="courses-hero-copy">
-            <p className="courses-eyebrow">КУРСИ АНГЛІЙСЬКОЇ МОВИ</p>
+            <p className="courses-eyebrow">{t("courses.hero.eyebrow")}</p>
             <h1>
-              Навчайся. Практикуй.
+              {t("courses.hero.titleLine1")}
               <br />
-              Досягай результатів.
+              {t("courses.hero.titleLine2")}
             </h1>
-            <p className="courses-subtitle">
-              Сучасні курси англійської мови для будь-якого рівня та цілей. Заговори впевнено вже за 2 місяці!
-            </p>
+            <p className="courses-subtitle">{t("courses.hero.subtitle")}</p>
 
             <div className="courses-hero-actions">
-              <button className="btn btn-accent">Записатися на пробний урок</button>
-              <button className="btn btn-outline">Пройти тест на рівень</button>
+              <button className="btn btn-accent">{t("courses.hero.trial")}</button>
+              <button className="btn btn-outline">{t("courses.hero.test")}</button>
             </div>
           </div>
 
@@ -64,11 +69,11 @@ function Courses() {
             <div className="courses-hero-art">
               <div className="courses-hero-bubble courses-hero-bubble--left">
                 <span className="flag" aria-hidden="true">
-                  🇬🇧
+                  GB
                 </span>
                 <div>
-                  <strong>Speak English</strong>
-                  <span>with confidence!</span>
+                  <strong>{t("courses.hero.bubbleTitle")}</strong>
+                  <span>{t("courses.hero.bubbleSubtitle")}</span>
                 </div>
               </div>
 
@@ -77,8 +82,8 @@ function Courses() {
               </div>
 
               <div className="courses-hero-bubble courses-hero-bubble--right">
-                <strong>Результат</strong>
-                <span>за 2 місяці</span>
+                <strong>{t("courses.hero.result")}</strong>
+                <span>{t("courses.hero.resultTime")}</span>
                 <div className="spark" aria-hidden="true">
                   <span></span>
                   <span></span>
@@ -93,12 +98,12 @@ function Courses() {
 
       <section className="courses-list">
         <header className="courses-list-head">
-          <h2>Обери свій курс</h2>
-          <p>Ми маємо програми для різних рівнів та цілей</p>
+          <h2>{t("courses.list.title")}</h2>
+          <p>{t("courses.list.subtitle")}</p>
         </header>
 
-        <div className="courses-filters" role="tablist" aria-label="Course filters">
-          {COURSE_CATEGORIES.map((category) => (
+        <div className="courses-filters" role="tablist" aria-label={t("courses.list.filtersAria")}>
+          {courseCategories.map((category) => (
             <button
               key={category.id}
               className={`courses-pill${activeCategory === category.id ? " is-active" : ""}`}
@@ -126,28 +131,28 @@ function Courses() {
               <ul className="course-meta">
                 <li>
                   <span className="meta-dot" aria-hidden="true">
-                    ⏱
+                    TM
                   </span>
-                  Тривалість: {course.duration}
+                  {t("courses.list.duration", { value: course.duration })}
                 </li>
                 <li>
                   <span className="meta-dot" aria-hidden="true">
-                    📅
+                    CL
                   </span>
-                  Заняття: {course.lessons}
+                  {t("courses.list.lessons", { value: course.lessons })}
                 </li>
                 <li>
                   <span className="meta-dot" aria-hidden="true">
-                    💻
+                    PC
                   </span>
-                  Формат: {course.format}
+                  {t("courses.list.format", { value: course.format })}
                 </li>
               </ul>
 
               <div className="course-footer">
                 <span className="course-price">{course.price}</span>
                 <Link className="btn btn-outline btn-sm" to={`/courses/${course.id}/enroll`}>
-                  Детальніше
+                  {t("courses.list.details")}
                 </Link>
               </div>
             </article>
@@ -156,53 +161,28 @@ function Courses() {
       </section>
 
       <section className="courses-why">
-        <h2>Чому обирають нас</h2>
+        <h2>{t("courses.why.title")}</h2>
         <div className="why-grid">
-          <div className="why-item">
-            <div className="why-icon why-icon--green" aria-hidden="true">
-              👥
+          {whyItems.map(([title, desc], index) => (
+            <div className="why-item" key={title}>
+              <div className={`why-icon ${whyIconClasses[index]}`} aria-hidden="true">
+                {whyIcons[index]}
+              </div>
+              <div>
+                <h3>{title}</h3>
+                <p>{desc}</p>
+              </div>
             </div>
-            <div>
-              <h3>Маленькі групи</h3>
-              <p>Невеликі групи до 8 осіб для максимальної уваги кожному студенту.</p>
-            </div>
-          </div>
-          <div className="why-item">
-            <div className="why-icon why-icon--yellow" aria-hidden="true">
-              💬
-            </div>
-            <div>
-              <h3>Практика з першого уроку</h3>
-              <p>Більше розмовної практики та менше нудної граматики.</p>
-            </div>
-          </div>
-          <div className="why-item">
-            <div className="why-icon why-icon--purple" aria-hidden="true">
-              🎓
-            </div>
-            <div>
-              <h3>Досвідчені викладачі</h3>
-              <p>Сертифіковані викладачі з досвідом роботи понад 5 років.</p>
-            </div>
-          </div>
-          <div className="why-item">
-            <div className="why-icon why-icon--blue" aria-hidden="true">
-              🗓
-            </div>
-            <div>
-              <h3>Гнучкий графік</h3>
-              <p>Обирай зручний час та займайся у комфортному темпі.</p>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
       <section className="courses-cta">
         <div className="cta-inner">
           <div>
-            <h2>Готовий почати?</h2>
-            <p>Запишись на пробний урок та зроби перший крок до своєї мети!</p>
-            <button className="btn btn-light">Записатися зараз</button>
+            <h2>{t("courses.cta.title")}</h2>
+            <p>{t("courses.cta.desc")}</p>
+            <button className="btn btn-light">{t("courses.cta.button")}</button>
           </div>
           <div className="cta-art" aria-hidden="true">
             <div className="cta-circle"></div>

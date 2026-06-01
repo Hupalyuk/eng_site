@@ -36,6 +36,7 @@ router.get('/', async (req, res, next) => {
       `SELECT p.id, p.content, p.image_url, p.created_at, u.id AS user_id, u.name AS user_name
        FROM posts p
        JOIN users u ON u.id = p.user_id
+       WHERE COALESCE(p.status, 'published') = 'published'
        ORDER BY p.created_at DESC`
     );
     res.json(result.rows);
