@@ -512,7 +512,7 @@ export default function AdminUsers() {
                 <td><input defaultValue={item.name} onBlur={(e) => updateUser(item.id, { ...item, name: e.target.value })} /></td>
                 <td><input defaultValue={item.email} onBlur={(e) => updateUser(item.id, { ...item, email: e.target.value })} /></td>
                 <td>
-                  <select defaultValue={item.role} onChange={(e) => updateUser(item.id, { ...item, role: e.target.value })}>
+                  <select value={item.role} onChange={(e) => updateUser(item.id, { ...item, role: e.target.value })}>
                     <option value="admin">admin</option>
                     <option value="teacher">teacher</option>
                     <option value="student">student</option>

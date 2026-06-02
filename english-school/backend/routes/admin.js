@@ -195,32 +195,44 @@ router.patch('/users/:id', async (req, res, next) => {
     const { name, email, role, is_blocked } = req.body;
     const allowedRoles = ['admin', 'teacher', 'student'];
 
-    if (!name || !email || !allowedRoles.includes(role)) {
-      return res.status(400).json({ error: 'Invalid payload.' });
+    if (role && !allowedRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role.' });
     }
 
     if (req.user.id === userId && is_blocked === true) {
       return res.status(400).json({ error: 'Admin cannot block own account.' });
     }
 
+    // Get current user data
+    const current = await pool.query('SELECT name, email, role, is_blocked, teacher_status FROM users WHERE id = $1', [userId]);
+    if (current.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    // Use provided values or keep current ones
+    const newName = name || current.rows[0].name;
+    const newEmail = email || current.rows[0].email;
+    const newRole = role || current.rows[0].role;
+    const newBlocked = is_blocked !== undefined ? is_blocked : current.rows[0].is_blocked;
+
     const result = await pool.query(
       `UPDATE users
-       SET name = $1, email = $2, role = $3, is_blocked = $4,
+       SET name = $1, email = $2, role = $3::text, is_blocked = $4,
            teacher_status = CASE
-             WHEN $3 = 'teacher' AND teacher_status = 'none' THEN 'approved'
-             WHEN $3 <> 'teacher' THEN 'none'
+             WHEN $3::text = 'teacher' AND teacher_status = 'none' THEN 'approved'
+             WHEN $3::text <> 'teacher' THEN 'none'
              ELSE teacher_status
            END
        WHERE id = $5
        RETURNING id, name, email, role, is_blocked, teacher_status, created_at`,
-      [name, email, role, Boolean(is_blocked), userId]
+      [newName, newEmail, newRole, Boolean(newBlocked), userId]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    await logAdminAction(req.user.id, 'user.update', 'user', userId, { name, email, role, is_blocked });
+    await logAdminAction(req.user.id, 'user.update', 'user', userId, { name: newName, email: newEmail, role: newRole, is_blocked: newBlocked });
     res.json(result.rows[0]);
   } catch (error) {
     if (error.code === '23505') {

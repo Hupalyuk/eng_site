@@ -347,6 +347,7 @@ h1 {
 .nav-actions {
   display: flex;
   gap: 10px;
+  align-items: center;
 }
 
 .btn {
@@ -850,6 +851,40 @@ h1 {
 .site-nav .nav-actions {
   display: flex;
   gap: 10px;
+}
+
+.language-switch {
+  display: flex;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  padding: 4px;
+  align-items: center;
+}
+
+.language-switch .lang-option {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #ffffff;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.language-switch .lang-option:hover,
+.language-switch .lang-option:focus-visible {
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.language-switch .lang-option.is-active {
+  background: #ffffff;
+  color: #217a78;
 }
 
 .burger {
