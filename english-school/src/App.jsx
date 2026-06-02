@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
 import Home from "./pages/home.jsx";
 import Blog from "./pages/blog.jsx";
+import About from "./pages/about.jsx";
 import Login from "./pages/login.jsx";
 import Sign from "./pages/sign.jsx";
 import CreatePost from "./pages/create-post.jsx";
@@ -20,6 +21,7 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<About />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/courses/:courseId/enroll" element={<CourseEnroll />} />
           <Route path="/class" element={<ClassPage />} />

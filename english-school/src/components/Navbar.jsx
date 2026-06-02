@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   { labelKey: 'nav.courses', to: '/courses' },
   { labelKey: 'nav.class', to: '/class' },
   { labelKey: 'nav.blog', to: '/blog' },
-  { labelKey: 'nav.about', to: '/#about' },
+  { labelKey: 'nav.about', to: '/about' },
 ];
 
 function Navbar() {
