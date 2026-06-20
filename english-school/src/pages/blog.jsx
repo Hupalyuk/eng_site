@@ -111,7 +111,6 @@ const Blog = () => {
           <p>
             {t("blog.desc")}
           </p>
-          <button className="blog-btn-header">{t("blog.cta")}</button>
         </div>
         <img className="img-blog-header" src="/images/blog/blog-header.png" alt="Blog-header" />
       </div>

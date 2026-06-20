@@ -7,10 +7,49 @@ import { useAuth } from "../context/AuthContext.jsx";
 const CLASS_FALLBACK = {
   title: "",
   teacher: "Sarah Johnson",
-  teacherAvatar: "https://i.pravatar.cc/80?img=47",
+  teacherAvatar: "https://www.pngkey.com/png/detail/114-1149847_avatar-unknown-dp.png",
   meetLink: "https://meet.google.com/",
   startDate: "2026-05-20T18:00:00+03:00",
   endDate: "2026-05-20T19:00:00+03:00",
+};
+
+const CLASS_TEXT = {
+  ua: {
+    loadScheduleError: "Не вдалося завантажити розклад.",
+    syncScheduleError: "Не вдалося синхронізувати розклад.",
+    syncMessage: "Синхронізовано: {{total}} занять ({{created}} нових, {{updated}} оновлено).",
+    syncedSchedule: "Додати розклад у Google Calendar",
+    syncingSchedule: "Синхронізуємо...",
+    scheduleTitle: "Розклад занять на сайті",
+    loadingSchedule: "Завантаження розкладу...",
+    emptySchedule: "Поки що немає запланованих занять.",
+    googleEmpty: "У Google Calendar поки що немає подій на найближчий період.",
+    googleHint: "Підключіть Google Calendar, щоб бачити синхронізовані заняття.",
+    selectedFile: "Обрано: {{name}}",
+    uploadHint: "або натисніть, щоб обрати",
+    homeworkDrop: "Перетягніть файл ДЗ сюди",
+    homeworkTag: "ДЗ",
+    unsynced: "Не синхронізовано",
+    unsyncedTitle: "Ця подія ще не синхронізована з Google Calendar",
+  },
+  en: {
+    loadScheduleError: "Could not load the schedule.",
+    syncScheduleError: "Could not sync the schedule.",
+    syncMessage: "Synced: {{total}} lessons ({{created}} new, {{updated}} updated).",
+    syncedSchedule: "Add schedule to Google Calendar",
+    syncingSchedule: "Syncing...",
+    scheduleTitle: "Class schedule on the site",
+    loadingSchedule: "Loading schedule...",
+    emptySchedule: "No scheduled lessons yet.",
+    googleEmpty: "Google Calendar has no events for the upcoming period yet.",
+    googleHint: "Connect Google Calendar to see synced lessons.",
+    selectedFile: "Selected: {{name}}",
+    uploadHint: "or click to choose",
+    homeworkDrop: "Drop the homework file here",
+    homeworkTag: "HW",
+    unsynced: "Not synced",
+    unsyncedTitle: "This event has not been synced with Google Calendar yet",
+  },
 };
 
 
@@ -152,7 +191,9 @@ function ClassPage() {
   const [teacherGroups, setTeacherGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
 
-  const isTeacher = user?.role === "teacher";
+  const canManageClass = user?.role === "teacher" || user?.role === "admin";
+  const language = i18n.language === "en" ? "en" : "ua";
+  const copy = CLASS_TEXT[language];
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -183,7 +224,7 @@ function ClassPage() {
     const load = async () => {
       try {
         setError("");
-        const groupQuery = isTeacher && selectedGroupId ? `?groupId=${encodeURIComponent(selectedGroupId)}` : "";
+        const groupQuery = canManageClass && selectedGroupId ? `?groupId=${encodeURIComponent(selectedGroupId)}` : "";
         const response = await fetch(`${apiBase}/api/class/next${groupQuery}`, { credentials: "include" });
         const payload = await response.json();
         if (!response.ok) {
@@ -196,7 +237,7 @@ function ClassPage() {
       }
     };
     load();
-  }, [apiBase, user, isTeacher, selectedGroupId]);
+  }, [apiBase, user, canManageClass, selectedGroupId]);
 
   useEffect(() => {
     if (!user) return;
@@ -292,7 +333,7 @@ function ClassPage() {
     const loadSchedule = async () => {
       try {
         setScheduleLoading(true);
-        const groupQuery = isTeacher && selectedGroupId ? `?groupId=${encodeURIComponent(selectedGroupId)}` : "";
+        const groupQuery = canManageClass && selectedGroupId ? `?groupId=${encodeURIComponent(selectedGroupId)}` : "";
         const response = await fetch(`${apiBase}/api/class/schedule${groupQuery}`, { credentials: "include" });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
@@ -300,23 +341,24 @@ function ClassPage() {
             setScheduleLessons([]);
             return;
           }
-          throw new Error(payload?.error || "Не вдалося завантажити розклад.");
+          throw new Error(payload?.error || copy.loadScheduleError);
         }
         setScheduleLessons(Array.isArray(payload?.lessons) ? payload.lessons : []);
       } catch (err) {
-        setError((prev) => prev || err.message || "Не вдалося завантажити розклад.");
+        setError((prev) => prev || err.message || copy.loadScheduleError);
       } finally {
         setScheduleLoading(false);
       }
     };
     loadSchedule();
-  }, [apiBase, user, isTeacher, selectedGroupId]);
+  }, [apiBase, user, canManageClass, selectedGroupId, copy.loadScheduleError]);
 
   const groupName = classData?.groupName || t("classPage.noGroup");
   const lessonStart = classData?.lesson?.startAt || CLASS_FALLBACK.startDate;
   const lessonEnd = classData?.lesson?.endAt || CLASS_FALLBACK.endDate;
   const lessonTitle = classData?.lesson?.title || CLASS_FALLBACK.title;
   const meetLink = classData?.meetLink || CLASS_FALLBACK.meetLink;
+  const teacherName = classData?.teacherName || (language === "ua" ? "Викладача не призначено" : "No teacher assigned");
   const hasRealMeetLink = Boolean(meetLink && meetLink.startsWith("https://meet.google.com/") && meetLink.length > 24);
 
   const handleJoinMeet = () => {
@@ -382,24 +424,29 @@ function ClassPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          groupId: isTeacher && selectedGroupId ? Number(selectedGroupId) : undefined,
+          groupId: canManageClass && selectedGroupId ? Number(selectedGroupId) : undefined,
           weeks: 8,
         }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (payload?.needsGoogleConnect) setGoogleConnected(false);
-        throw new Error(payload?.error || "Не вдалося синхронізувати розклад.");
+        throw new Error(payload?.error || copy.syncScheduleError);
       }
 
-      setScheduleSyncMessage(`Синхронізовано: ${payload.total || 0} занять (${payload.created || 0} нових, ${payload.updated || 0} оновлено).`);
+      setScheduleSyncMessage(
+        copy.syncMessage
+          .replace("{{total}}", payload.total || 0)
+          .replace("{{created}}", payload.created || 0)
+          .replace("{{updated}}", payload.updated || 0)
+      );
       const calendarResponse = await fetch(`${apiBase}/api/class/calendar`, { credentials: "include" });
       const calendarPayload = await calendarResponse.json().catch(() => ({}));
       if (calendarResponse.ok) {
         setCalendarEvents(Array.isArray(calendarPayload?.events) ? calendarPayload.events : []);
       }
     } catch (err) {
-      setError(err?.message || "Не вдалося синхронізувати розклад.");
+      setError(err?.message || copy.syncScheduleError);
     } finally {
       setScheduleSyncLoading(false);
     }
@@ -427,7 +474,7 @@ function ClassPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          title: normalizeEventTitle(eventForm.title, normalizeEventTitle(lessonTitle)),
+          title: normalizeEventTitle(eventForm.title, normalizeEventTitle(lessonTitle, t("classPage.fallbackTitle"))),
           description: eventForm.description,
           location: eventForm.location,
           meetLink: eventForm.meetLink,
@@ -720,24 +767,24 @@ function ClassPage() {
       const endLocal = toDateTimeLocalValue(lessonEnd);
       return {
         ...prev,
-        title: normalizeEventTitle(lessonTitle),
+        title: normalizeEventTitle(lessonTitle, t("classPage.fallbackTitle")),
         meetLink: meetLink && meetLink.startsWith("https://meet.google.com/") ? meetLink : "",
         startAt: startLocal,
         endAt: endLocal,
       };
     });
-  }, [lessonStart, lessonEnd, lessonTitle, meetLink]);
+  }, [lessonStart, lessonEnd, lessonTitle, meetLink, t]);
 
   return (
     <main className="class-page">
       <section className="class-wrap">
         <article className="class-hero-card">
           <div className="class-lesson-info">
-            <p className="class-kicker">ГРУПА</p>
+            <p className="class-kicker">{t("classPage.group")}</p>
             <h1>{groupName}</h1>
-            {isTeacher && teacherGroups.length > 0 && (
+            {canManageClass && teacherGroups.length > 0 && (
               <div className="class-meet-editor">
-                <label htmlFor="teacher-group-select">Група викладача</label>
+                <label htmlFor="teacher-group-select">{t("classPage.teacherGroup")}</label>
                 <select
                   id="teacher-group-select"
                   value={selectedGroupId}
@@ -745,20 +792,20 @@ function ClassPage() {
                 >
                   {teacherGroups.map((group) => (
                     <option key={group.id} value={group.id}>
-                      {group.name} ({group.courseCode})
+                      {group.name} ({group.courseCode}){group.teacherName ? ` - ${group.teacherName}` : ""}
                     </option>
                   ))}
                 </select>
               </div>
             )}
-            <p className="class-group-line">Наступний урок: {lessonTitle}</p>
+            <p className="class-group-line">{t("classPage.nextLesson", { title: lessonTitle })}</p>
             <p>{eventDate}</p>
             <p>{eventTime}</p>
             <div className="class-teacher">
-              <img src={CLASS_FALLBACK.teacherAvatar} alt={CLASS_FALLBACK.teacher} />
+              <img src={CLASS_FALLBACK.teacherAvatar} alt={teacherName} />
               <div>
-                <span>Викладач</span>
-                <strong>{CLASS_FALLBACK.teacher}</strong>
+                <span>{t("classPage.teacher")}</span>
+                <strong>{teacherName}</strong>
               </div>
             </div>
           </div>
@@ -768,7 +815,7 @@ function ClassPage() {
           </div>
 
           <div className="class-join-area">
-            <p className="class-kicker">ПОЧАТОК ЧЕРЕЗ</p>
+            <p className="class-kicker">{t("classPage.startsIn")}</p>
             <div className="class-countdown-grid">
               {countdown.map((item) => (
                 <div key={item.label} className="class-countdown-cell">
@@ -779,10 +826,10 @@ function ClassPage() {
             </div>
 
             <div className="class-join-box">
-              <h3>Готові приєднатися?</h3>
-              {isTeacher && (
+              <h3>{t("classPage.ready")}</h3>
+              {canManageClass && (
                 <div className="class-meet-editor">
-                  <label htmlFor="meet-link-input">Посилання Google Meet для групи</label>
+                  <label htmlFor="meet-link-input">{t("classPage.meetForGroup")}</label>
                   <input
                     id="meet-link-input"
                     type="url"
@@ -791,16 +838,16 @@ function ClassPage() {
                     onChange={(event) => setMeetInput(event.target.value)}
                   />
                   <button className="class-secondary-btn" type="button" onClick={handleSaveMeetLink} disabled={saveLoading}>
-                    {saveLoading ? "Зберігаємо..." : "Зберегти посилання"}
+                    {saveLoading ? t("classPage.saving") : t("classPage.saveMeet")}
                   </button>
                 </div>
               )}
               <button className="class-meet-btn" type="button" onClick={handleJoinMeet}>
-                Приєднатися
+                {t("classPage.join")}
               </button>
             </div>
 
-            <p className="class-link-line">Посилання Meet: {meetLink}</p>
+            <p className="class-link-line">{t("classPage.meetLink", { link: meetLink })}</p>
             {error && <p className="form-error">{error}</p>}
           </div>
         </article>
@@ -808,7 +855,7 @@ function ClassPage() {
         <section className="class-grid-main">
           <article className="class-card class-card-calendar">
             <div className="class-card-head">
-              <h2>Календар</h2>
+              <h2>{t("classPage.calendar")}</h2>
             </div>
             <div className="class-calendar-actions">
               <button
@@ -817,10 +864,10 @@ function ClassPage() {
                 onClick={handleSyncSchedule}
                 disabled={scheduleSyncLoading || scheduleLoading || scheduleLessons.length === 0}
               >
-                {scheduleSyncLoading ? "Синхронізуємо..." : "Додати розклад у Google Calendar"}
+                {scheduleSyncLoading ? copy.syncingSchedule : copy.syncedSchedule}
               </button>
               <a className="class-open-gcal" href="https://calendar.google.com/" target="_blank" rel="noreferrer">
-                Відкрити Google Calendar
+                {t("classPage.openGoogle")}
               </a>
             </div>
             {scheduleSyncMessage && <p className="class-sync-message">{scheduleSyncMessage}</p>}
@@ -836,7 +883,7 @@ function ClassPage() {
                 </button>
               </div>
               <div className="class-month-grid class-month-grid-head">
-                {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"].map((label) => (
+                {t("classPage.weekdays", { returnObjects: true }).map((label) => (
                   <span key={label}>{label}</span>
                 ))}
               </div>
@@ -870,18 +917,18 @@ function ClassPage() {
             <div className="class-calendar-oauth">
               {!googleConnected ? (
                 <button type="button" className="class-secondary-btn" onClick={handleConnectGoogleCalendar} disabled={googleLoading}>
-                  {googleLoading ? "Підключаємо..." : "Підключити Google Calendar"}
+                  {googleLoading ? t("classPage.connecting") : t("classPage.connectGoogle")}
                 </button>
               ) : (
-                <p className="class-link-line">Google Calendar підключено</p>
+                <p className="class-link-line">{t("classPage.googleConnected")}</p>
               )}
             </div>
             <div className="class-events-list">
-              <h3>Розклад занять на сайті</h3>
+              <h3>{copy.scheduleTitle}</h3>
               {scheduleLoading ? (
-                <p>Завантаження розкладу...</p>
+                <p>{copy.loadingSchedule}</p>
               ) : scheduleLessons.length === 0 ? (
-                <p>Поки що немає запланованих занять.</p>
+                <p>{copy.emptySchedule}</p>
               ) : (
                 <ul className="class-list class-schedule-list">
                   {scheduleLessons.slice(0, 8).map((lesson) => (
@@ -889,8 +936,12 @@ function ClassPage() {
                       <span className="class-home-icon">CL</span>
                       <div>
                         <strong>{lesson.title}</strong>
-                        <p>{new Date(lesson.startAt).toLocaleString("uk-UA")} - {new Date(lesson.endAt).toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" })}</p>
-                        <p>{lesson.groupName} {lesson.meetLink ? `• Meet: ${lesson.meetLink}` : ""}</p>
+                        <p>{new Date(lesson.startAt).toLocaleString(language === "ua" ? "uk-UA" : "en-US")} - {new Date(lesson.endAt).toLocaleTimeString(language === "ua" ? "uk-UA" : "en-US", { hour: "2-digit", minute: "2-digit" })}</p>
+                        <p>
+                          {lesson.groupName}
+                          {lesson.teacherName ? ` • ${t("classPage.teacher")}: ${lesson.teacherName}` : ""}
+                          {lesson.meetLink ? ` • Meet: ${lesson.meetLink}` : ""}
+                        </p>
                       </div>
                     </li>
                   ))}
@@ -903,13 +954,13 @@ function ClassPage() {
               <span>Google Calendar</span>
             </div>
             {!googleConnected ? (
-              <p>Підключіть Google Calendar, щоб бачити синхронізовані заняття.</p>
+              <p>{copy.googleHint}</p>
             ) : (
               <div className="class-events-list class-events-scroll">
                 {calendarLoading ? (
-                  <p>Завантаження...</p>
+                  <p>{t("classPage.loadingCalendar")}</p>
                 ) : calendarEvents.length === 0 ? (
-                  <p>У Google Calendar поки що немає подій на найближчий період.</p>
+                  <p>{copy.googleEmpty}</p>
                 ) : (
                   <ul className="class-list">
                     {calendarEvents.map((event) => (
@@ -918,7 +969,7 @@ function ClassPage() {
                         <div>
                           <strong>{event.title}</strong>
                           <p>
-                            {event.startAt ? new Date(event.startAt).toLocaleString("uk-UA") : "Час не вказано"}
+                            {event.startAt ? new Date(event.startAt).toLocaleString(language === "ua" ? "uk-UA" : "en-US") : t("classPage.noTime")}
                             {event.meetLink ? ` • Meet: ${event.meetLink}` : ""}
                           </p>
                         </div>
@@ -934,14 +985,14 @@ function ClassPage() {
         <section className="class-grid-bottom">
           <article className="class-card">
             <div className="class-card-head">
-              <h2>Матеріали</h2>
-              <Link to="/blog">Усі</Link>
+              <h2>{t("classPage.materials")}</h2>
+              <Link to="/blog">{t("common.all")}</Link>
             </div>
-            {isTeacher && (
+            {canManageClass && (
               <div className="class-meet-editor">
-                <label htmlFor="material-title">Назва файлу</label>
+                <label htmlFor="material-title">{t("classPage.fileTitle")}</label>
                 <input id="material-title" type="text" value={materialTitle} onChange={(e) => setMaterialTitle(e.target.value)} />
-                <label htmlFor="material-file">Файл</label>
+                <label htmlFor="material-file">{t("classPage.file")}</label>
                 <input
                   ref={materialFileInputRef}
                   id="material-file"
@@ -969,20 +1020,20 @@ function ClassPage() {
                 >
                   <span className="class-upload-icon" aria-hidden="true">↑</span>
                   <span className="class-upload-copy">
-                    <strong>Перетягніть файл сюди</strong>
-                    <span>або натисніть, щоб обрати (PDF/DOCX/XLSX/MP3/ZIP)</span>
-                    {materialFile ? <em>Обрано: {materialFile.name}</em> : null}
+                    <strong>{t("classPage.dropFile")}</strong>
+                    <span>{t("classPage.browseFile")}</span>
+                    {materialFile ? <em>{copy.selectedFile.replace("{{name}}", materialFile.name)}</em> : null}
                   </span>
                 </button>
                 <button type="button" className="class-secondary-btn" onClick={handleUploadMaterial} disabled={materialUploading}>
-                  {materialUploading ? "Завантажуємо..." : "Додати матеріал"}
+                  {materialUploading ? t("classPage.uploading") : t("classPage.addMaterial")}
                 </button>
               </div>
             )}
             {materialsLoading ? (
-              <p>Завантаження...</p>
+              <p>{t("common.loading")}</p>
             ) : materialsByDay.length === 0 ? (
-              <p>Поки що матеріалів немає.</p>
+              <p>{t("classPage.emptyMaterials")}</p>
             ) : (
               <div className="class-material-groups">
                 {materialsByDay.map((group) => (
@@ -1001,13 +1052,13 @@ function ClassPage() {
                                 </a>
                               </strong>
                               <p>{item.fileName} • {formatFileSize(item.fileSize)}</p>
-                              {isTeacher && (
+                              {canManageClass && (
                                 <button
                                   type="button"
                                   className="class-secondary-btn"
                                   onClick={() => handleDeleteMaterial(item.id)}
                                 >
-                                  Видалити
+                                  {t("common.delete")}
                                 </button>
                               )}
                             </div>
@@ -1022,13 +1073,13 @@ function ClassPage() {
           </article>
           <article className="class-card">
             <div className="class-card-head">
-              <h2>Домашнє завдання</h2>
+              <h2>{t("classPage.homework")}</h2>
             </div>
-            {isTeacher && (
+            {canManageClass && (
               <div className="class-meet-editor">
-                <label htmlFor="homework-title">Назва завдання</label>
+                <label htmlFor="homework-title">{t("classPage.taskTitle")}</label>
                 <input id="homework-title" type="text" value={homeworkTitle} onChange={(e) => setHomeworkTitle(e.target.value)} />
-                <label htmlFor="homework-file">Файл</label>
+                <label htmlFor="homework-file">{t("classPage.file")}</label>
                 <input
                   ref={homeworkFileInputRef}
                   id="homework-file"
@@ -1056,36 +1107,36 @@ function ClassPage() {
                 >
                   <span className="class-upload-icon" aria-hidden="true">↑</span>
                   <span className="class-upload-copy">
-                    <strong>Перетягніть файл ДЗ сюди</strong>
-                    <span>або натисніть, щоб обрати</span>
-                    {homeworkFile ? <em>Обрано: {homeworkFile.name}</em> : null}
+                    <strong>{copy.homeworkDrop}</strong>
+                    <span>{copy.uploadHint}</span>
+                    {homeworkFile ? <em>{copy.selectedFile.replace("{{name}}", homeworkFile.name)}</em> : null}
                   </span>
                 </button>
                 <button type="button" className="class-secondary-btn" onClick={handleUploadHomework} disabled={homeworkUploading}>
-                  {homeworkUploading ? "Завантажуємо..." : "Додати домашнє завдання"}
+                  {homeworkUploading ? t("classPage.uploading") : t("classPage.addHomework")}
                 </button>
               </div>
             )}
             {homeworksLoading ? (
-              <p>Завантаження...</p>
+              <p>{t("common.loading")}</p>
             ) : homeworks.length === 0 ? (
-              <p>Поки що домашніх завдань немає.</p>
+              <p>{t("classPage.emptyHomeworks")}</p>
             ) : (
               <ul className="class-list">
                 {homeworks.map((item) => (
                   <li key={item.id}>
-                    <span className="class-home-icon">ЗВ</span>
+                    <span className="class-home-icon">{copy.homeworkTag}</span>
                     <div>
                       <strong>
                         <a href={`${apiBase}${item.fileUrl}`} target="_blank" rel="noreferrer">
                           {item.title}
                         </a>
                       </strong>
-                      <p>{item.dueText || "Дедлайн не вказано"}</p>
+                      <p>{item.dueText || t("classPage.noDeadline")}</p>
                       <p>{item.fileName} • {formatFileSize(item.fileSize)}</p>
-                      {isTeacher && (
+                      {canManageClass && (
                         <button type="button" className="class-secondary-btn" onClick={() => handleDeleteHomework(item.id)}>
-                          Видалити
+                          {t("common.delete")}
                         </button>
                       )}
                     </div>
@@ -1100,24 +1151,24 @@ function ClassPage() {
         <div className="class-modal-backdrop" onClick={() => setSelectedDay(null)}>
           <div className="class-modal" onClick={(e) => e.stopPropagation()}>
             <div className="class-card-head">
-              <h3>Нова подія</h3>
+              <h3>{t("classPage.newEvent")}</h3>
               <button type="button" className="class-secondary-btn" onClick={() => setSelectedDay(null)}>
-                Закрити
+                {t("classPage.close")}
               </button>
             </div>
-            <p>{selectedDay.toLocaleDateString("uk-UA", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
+            <p>{selectedDay.toLocaleDateString(language === "ua" ? "uk-UA" : "en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
             <div className="class-meet-editor">
-              <label htmlFor="event-title-modal">Title</label>
+              <label htmlFor="event-title-modal">{t("classPage.eventTitle")}</label>
               <input id="event-title-modal" type="text" value={eventForm.title} onChange={(e) => handleEventInput("title", e.target.value)} />
-              <label htmlFor="event-start-modal">Start</label>
+              <label htmlFor="event-start-modal">{t("classPage.eventStart")}</label>
               <input id="event-start-modal" type="datetime-local" value={eventForm.startAt} onChange={(e) => handleEventInput("startAt", e.target.value)} />
-              <label htmlFor="event-end-modal">End</label>
+              <label htmlFor="event-end-modal">{t("classPage.eventEnd")}</label>
               <input id="event-end-modal" type="datetime-local" value={eventForm.endAt} onChange={(e) => handleEventInput("endAt", e.target.value)} />
-              <label htmlFor="event-location-modal">Location</label>
+              <label htmlFor="event-location-modal">{t("classPage.eventLocation")}</label>
               <input id="event-location-modal" type="text" value={eventForm.location} onChange={(e) => handleEventInput("location", e.target.value)} />
-              <label htmlFor="event-meet-modal">Meet Link</label>
+              <label htmlFor="event-meet-modal">{t("classPage.eventMeet")}</label>
               <input id="event-meet-modal" type="url" value={eventForm.meetLink} onChange={(e) => handleEventInput("meetLink", e.target.value)} />
-              <label htmlFor="event-description-modal">Description</label>
+              <label htmlFor="event-description-modal">{t("classPage.eventDescription")}</label>
               <input
                 id="event-description-modal"
                 type="text"
@@ -1128,13 +1179,13 @@ function ClassPage() {
                 await handleCreateEvent({ syncAndOpen: true });
                 setSelectedDay(null);
               }} disabled={createLoading}>
-                {createLoading ? "Saving..." : "Save and open in Google Calendar"}
+                {createLoading ? t("classPage.savingEvent") : t("classPage.saveAndOpen")}
               </button>
             </div>
             <div className="class-events-list">
-              <h3>Події цього дня</h3>
+              <h3>{t("classPage.dayEvents")}</h3>
               {selectedDayEvents.length === 0 ? (
-                <p>Немає подій.</p>
+                <p>{t("classPage.noEvents")}</p>
               ) : (
                 <ul className="class-list">
                   {selectedDayEvents.map((event) => (
@@ -1142,26 +1193,30 @@ function ClassPage() {
                       <span className="class-home-icon">{event.source === "schedule" ? "CL" : "EV"}</span>
                       <div>
                         <strong>{event.title}</strong>
-                        <p>{event.startAt ? new Date(event.startAt).toLocaleString("uk-UA") : "Час не вказано"}</p>
+                        <p>{event.startAt ? new Date(event.startAt).toLocaleString(language === "ua" ? "uk-UA" : "en-US") : t("classPage.noTime")}</p>
                         {event.source === "schedule" ? (
                         <div>
-                          <p>{event.groupName} {event.meetLink ? `• Meet: ${event.meetLink}` : ""}</p>
+                          <p>
+                            {event.groupName}
+                            {event.teacherName ? ` • ${t("classPage.teacher")}: ${event.teacherName}` : ""}
+                            {event.meetLink ? ` • Meet: ${event.meetLink}` : ""}
+                          </p>
                           {event.googleEventId ? (
                             <button
                               type="button"
                               className="class-secondary-btn"
                               onClick={() => handleDeleteScheduleEvent(event.id)}
                             >
-                              Видалити подію
+                              {t("classPage.deleteEvent")}
                             </button>
                           ) : (
                             <button
                               type="button"
                               className="class-secondary-btn"
                               disabled
-                              title="Ця подія ще не синхронізована з Google Calendar"
+                              title={copy.unsyncedTitle}
                             >
-                              Не синхронізовано
+                              {copy.unsynced}
                             </button>
                           )}
                         </div>
@@ -1171,7 +1226,7 @@ function ClassPage() {
                           className="class-secondary-btn"
                           onClick={() => handleDeleteEvent(event.id)}
                         >
-                          Видалити подію
+                          {t("classPage.deleteEvent")}
                         </button>
                       )}
                       </div>

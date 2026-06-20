@@ -58,11 +58,6 @@ function Courses() {
               {t("courses.hero.titleLine2")}
             </h1>
             <p className="courses-subtitle">{t("courses.hero.subtitle")}</p>
-
-            <div className="courses-hero-actions">
-              <button className="btn btn-accent">{t("courses.hero.trial")}</button>
-              <button className="btn btn-outline">{t("courses.hero.test")}</button>
-            </div>
           </div>
 
           <div className="courses-hero-media" aria-hidden="true">

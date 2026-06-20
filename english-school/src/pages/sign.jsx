@@ -4,6 +4,9 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL_INVALID_MESSAGE = "Enter a full email address, for example name@gmail.com.";
+
 const Register = () => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
@@ -39,6 +42,12 @@ const Register = () => {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      setError(t("auth.errors.emailInvalid", { defaultValue: EMAIL_INVALID_MESSAGE }));
+      return;
+    }
+
     if (isTeacher && documents.length === 0) {
       setError(t("auth.errors.docsRequired"));
       return;
@@ -51,7 +60,7 @@ const Register = () => {
       if (isTeacher) {
         const formData = new FormData();
         formData.append("name", name);
-        formData.append("email", email);
+        formData.append("email", normalizedEmail);
         formData.append("password", password);
         documents.forEach((file) => formData.append("documents", file));
 
@@ -65,7 +74,7 @@ const Register = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ name, email, password }),
+          body: JSON.stringify({ name, email: normalizedEmail, password }),
         });
       }
 
@@ -122,7 +131,15 @@ const Register = () => {
 
             <label className="field">
               <span>{t("auth.emailAddress")}</span>
-              <input type="email" placeholder={t("auth.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <input
+                type="email"
+                placeholder={t("auth.emailPlaceholder")}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                pattern="[^\s@]+@[^\s@]+\.[^\s@]{2,}"
+                title={t("auth.errors.emailInvalid", { defaultValue: EMAIL_INVALID_MESSAGE })}
+                required
+              />
             </label>
 
             <label className="field">

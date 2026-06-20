@@ -1,16 +1,160 @@
-# React + Vite
+# English School Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Node.js застосунок для керування онлайн-школою англійської мови.
 
-Currently, two official plugins are available:
+## Опис
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Проєкт містить публічний сайт, запис на курси, робочий простір класу, блог, авторизацію, заявки викладачів, адмін-панель, керування групами, призначення викладачів, завантаження файлів і синхронізацію з Google Calendar.
 
-## React Compiler
+## Технології
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React
+- Vite
+- React Router
+- i18next
+- Node.js
+- Express
+- PostgreSQL
+- Multer
+- Google APIs
 
-## Expanding the ESLint configuration
+## Можливості
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Реєстрація студентів і викладачів
+- Вхід і session-based авторизація
+- Завантаження документів викладача та підтвердження заявки
+- Каталог курсів і заявки на запис
+- Автоматичне створення груп за розкладом курсу
+- Призначення викладача до групи
+- Сторінка класу з викладачем, Meet-посиланням, розкладом, матеріалами та домашніми завданнями
+- Підключення Google Calendar і синхронізація розкладу
+- Пости в блозі
+- Адмін-панель для користувачів, заявок, груп, викладачів, постів і журналу дій
+
+## Встановлення
+
+Встановити залежності frontend:
+
+```bash
+npm install
+```
+
+Встановити залежності backend:
+
+```bash
+cd backend
+npm install
+```
+
+## Змінні середовища
+
+Frontend `.env`:
+
+```env
+VITE_API_BASE=http://localhost:4000
+```
+
+Backend `.env`:
+
+```env
+PORT=4000
+NODE_ENV=development
+SESSION_SECRET=
+SESSION_COOKIE_NAME=sid
+FRONTEND_ORIGIN=http://localhost:5173
+
+PGHOST=localhost
+PGUSER=
+PGPASSWORD=
+PGDATABASE=
+PGPORT=5432
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=http://localhost:4000/api/google/callback
+```
+
+## База даних
+
+Запустіть схему з `backend/schema.sql` у PostgreSQL:
+
+```bash
+cd backend
+psql -d english_school -f schema.sql
+```
+
+## Локальний запуск
+
+Запуск backend:
+
+```bash
+cd backend
+npm run dev
+```
+
+Запуск frontend в іншому терміналі:
+
+```bash
+npm run dev
+```
+
+Frontend:
+
+```text
+http://localhost:5173
+```
+
+Backend:
+
+```text
+http://localhost:4000
+```
+
+## Скрипти
+
+```bash
+npm run dev
+npm run build
+npm run preview
+npm run lint
+```
+
+Backend:
+
+```bash
+cd backend
+npm run dev
+npm start
+```
+
+## Структура папок
+
+```text
+english-school
+|-- backend
+|   |-- middleware
+|   |-- routes
+|   |-- uploads
+|   |-- db.js
+|   |-- schema.sql
+|   `-- server.js
+|-- src
+|   |-- components
+|   |-- context
+|   |-- data
+|   |-- lib
+|   |-- pages
+|   |-- styles
+|   `-- i18n.js
+`-- package.json
+```
+
+## Ролі
+
+- Студент: записується на курси та переглядає дані призначеного класу
+- Викладач: керує призначеними групами, матеріалами, домашніми завданнями, Meet-посиланнями та синхронізацією розкладу
+- Адміністратор: керує користувачами, групами, викладачами, заявками, постами блогу та має права викладача на сторінці класу
+
+## Ліцензія
+
+Проєкт створено з навчальною метою.

@@ -57,6 +57,27 @@ async function getNextGroupNumber(courseCode, year) {
   return Number(result.rows[0]?.next_number || 1);
 }
 
+async function normalizeTeacherId(value) {
+  const teacherId = Number(value) || null;
+  if (!teacherId) return null;
+
+  const result = await pool.query(
+    `SELECT id
+     FROM users
+     WHERE id = $1 AND role = 'teacher' AND teacher_status = 'approved'
+     LIMIT 1`,
+    [teacherId]
+  );
+
+  if (result.rows.length === 0) {
+    const error = new Error('Selected teacher was not found or is not approved.');
+    error.status = 400;
+    throw error;
+  }
+
+  return teacherId;
+}
+
 router.get('/stats', async (req, res, next) => {
   try {
     const [
@@ -490,7 +511,7 @@ router.post('/groups', async (req, res, next) => {
     const daysKey = normalizeListKey(req.body?.daysKey, DAY_VALUES);
     const timesKey = normalizeListKey(req.body?.timesKey, TIME_VALUES);
     const meetLink = String(req.body?.meetLink || '').trim() || null;
-    const teacherId = Number(req.body?.teacherId) || null;
+    const teacherId = await normalizeTeacherId(req.body?.teacherId);
     const year = toInt(req.body?.year, toYear2(), { min: 0, max: 99 });
 
     if (!courseCode || !daysKey || !timesKey) {
@@ -510,6 +531,9 @@ router.post('/groups', async (req, res, next) => {
     await logAdminAction(req.user.id, 'group.create', 'group', result.rows[0].id, result.rows[0]);
     res.status(201).json(result.rows[0]);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     if (error.code === '23505') {
       return res.status(409).json({ error: 'Group with this name or number already exists.' });
     }
@@ -529,7 +553,7 @@ router.patch('/groups/:id', async (req, res, next) => {
     const daysKey = normalizeListKey(req.body?.daysKey, DAY_VALUES);
     const timesKey = normalizeListKey(req.body?.timesKey, TIME_VALUES);
     const meetLink = String(req.body?.meetLink || '').trim() || null;
-    const teacherId = Number(req.body?.teacherId) || null;
+    const teacherId = await normalizeTeacherId(req.body?.teacherId);
 
     if (!name || !courseCode || !daysKey || !timesKey) {
       return res.status(400).json({ error: 'Name, course, days, and times are required.' });
@@ -550,6 +574,9 @@ router.patch('/groups/:id', async (req, res, next) => {
     await logAdminAction(req.user.id, 'group.update', 'group', groupId, result.rows[0]);
     res.json(result.rows[0]);
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
     if (error.code === '23505') {
       return res.status(409).json({ error: 'Group with this name already exists.' });
     }

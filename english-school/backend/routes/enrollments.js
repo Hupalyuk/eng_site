@@ -60,21 +60,27 @@ router.post('/', requireAuth, async (req, res, next) => {
     await client.query('BEGIN');
 
     const groupsResult = await client.query(
-      `SELECT id, group_number, name, member_count
-       FROM course_groups
-       WHERE course_code = $1 AND year = $2 AND days_key = $3 AND times_key = $4 AND member_count < 5
-       ORDER BY group_number ASC
+      `SELECT cg.id, cg.group_number, cg.name, cg.member_count,
+              teacher.name AS teacher_name, teacher.email AS teacher_email
+       FROM course_groups cg
+       LEFT JOIN users teacher ON teacher.id = cg.teacher_id
+       WHERE cg.course_code = $1 AND cg.year = $2 AND cg.days_key = $3 AND cg.times_key = $4 AND cg.member_count < 5
+       ORDER BY cg.group_number ASC
        LIMIT 1
-       FOR UPDATE`,
+       FOR UPDATE OF cg`,
       [courseCode, year2, daysKey, timesKey]
     );
 
     let groupId;
     let groupName;
+    let teacherName = '';
+    let teacherEmail = '';
 
     if (groupsResult.rows.length > 0) {
       groupId = groupsResult.rows[0].id;
       groupName = groupsResult.rows[0].name;
+      teacherName = groupsResult.rows[0].teacher_name || '';
+      teacherEmail = groupsResult.rows[0].teacher_email || '';
     } else {
       const lastGroupResult = await client.query(
         `SELECT group_number
@@ -110,7 +116,15 @@ router.post('/', requireAuth, async (req, res, next) => {
     res.status(201).json({
       ok: true,
       status: 'new',
-      pendingGroup: { id: groupId, name: groupName, course: courseCode.toUpperCase(), year: year2 },
+      pendingGroup: {
+        id: groupId,
+        name: groupName,
+        course: courseCode.toUpperCase(),
+        year: year2,
+        teacherName,
+        teacherEmail,
+      },
+      teacher: teacherName ? { name: teacherName, email: teacherEmail } : null,
     });
   } catch (error) {
     if (client) {

@@ -26,12 +26,27 @@ const uploadTeacherDocs = multer({
   limits: { files: 5, fileSize: 10 * 1024 * 1024 },
 });
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function normalizeEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isValidEmail(value) {
+  return EMAIL_PATTERN.test(value);
+}
+
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, password } = req.body;
+    const email = normalizeEmail(req.body?.email);
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required.' });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Enter a full email address, for example name@gmail.com.' });
     }
 
     const existing = await pool.query('SELECT id FROM users WHERE email = $1 LIMIT 1', [email]);
@@ -56,10 +71,15 @@ router.post('/register', async (req, res, next) => {
 
 router.post('/register-teacher', uploadTeacherDocs.array('documents', 5), async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, password } = req.body;
+    const email = normalizeEmail(req.body?.email);
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required.' });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Enter a full email address, for example name@gmail.com.' });
     }
 
     if (!req.files || req.files.length === 0) {

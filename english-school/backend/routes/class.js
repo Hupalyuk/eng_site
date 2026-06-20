@@ -107,6 +107,8 @@ function toSchedulePayload(group, startAt, timeValue) {
     groupId: Number(group.id),
     groupName: group.name,
     courseCode: String(group.course_code || '').toUpperCase(),
+    teacherName: group.teacher_name || '',
+    teacherEmail: group.teacher_email || '',
     title: makeLessonTitle(group),
     description: `Group: ${group.name}\nCourse: ${String(group.course_code || '').toUpperCase()}`,
     location: meetLink,
@@ -148,10 +150,12 @@ function generateScheduleLessons(group, { from = new Date(), weeks = DEFAULT_SCH
 
 async function findLatestGroupByUser(userId) {
   const result = await pool.query(
-    `SELECT cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link, cg.meet_space_name, u.name AS user_name
+    `SELECT cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link, cg.meet_space_name,
+            u.name AS user_name, teacher.name AS teacher_name, teacher.email AS teacher_email
      FROM course_group_members cgm
      JOIN course_groups cg ON cg.id = cgm.group_id
      JOIN users u ON u.id = cgm.user_id
+     LEFT JOIN users teacher ON teacher.id = cg.teacher_id
      WHERE cgm.user_id = $1 AND cgm.status = 'approved'
      ORDER BY cgm.created_at DESC
      LIMIT 1`,
@@ -166,9 +170,11 @@ async function findLatestGroupByUser(userId) {
   if (!userEmail) return null;
 
   const fallbackResult = await pool.query(
-    `SELECT cgm.id AS member_id, cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link, cg.meet_space_name
+    `SELECT cgm.id AS member_id, cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link,
+            cg.meet_space_name, teacher.name AS teacher_name, teacher.email AS teacher_email
      FROM course_group_members cgm
      JOIN course_groups cg ON cg.id = cgm.group_id
+     LEFT JOIN users teacher ON teacher.id = cg.teacher_id
      WHERE LOWER(cgm.email) = LOWER($1) AND cgm.status = 'approved'
      ORDER BY cgm.created_at DESC
      LIMIT 1`,
@@ -196,20 +202,37 @@ async function getUserById(userId) {
   return result.rows[0] || null;
 }
 
-async function getTeacherGroups() {
+async function getTeacherGroups(user) {
+  if (user?.role === 'admin') {
+    const result = await pool.query(
+      `SELECT cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link, cg.meet_space_name,
+              cg.teacher_id, teacher.name AS teacher_name, teacher.email AS teacher_email
+       FROM course_groups cg
+       LEFT JOIN users teacher ON teacher.id = cg.teacher_id
+       ORDER BY cg.name ASC`
+    );
+    return result.rows;
+  }
+
   const result = await pool.query(
-    `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name, teacher_id
-     FROM course_groups
-     ORDER BY name ASC`
+    `SELECT cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link, cg.meet_space_name,
+            cg.teacher_id, teacher.name AS teacher_name, teacher.email AS teacher_email
+     FROM course_groups cg
+     LEFT JOIN users teacher ON teacher.id = cg.teacher_id
+     WHERE cg.teacher_id = $1
+     ORDER BY cg.name ASC`,
+    [user.id]
   );
   return result.rows;
 }
 
 async function findGroupById(groupId) {
   const result = await pool.query(
-    `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name, teacher_id
-     FROM course_groups
-     WHERE id = $1
+    `SELECT cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link, cg.meet_space_name,
+            cg.teacher_id, teacher.name AS teacher_name, teacher.email AS teacher_email
+     FROM course_groups cg
+     LEFT JOIN users teacher ON teacher.id = cg.teacher_id
+     WHERE cg.id = $1
      LIMIT 1`,
     [groupId]
   );
@@ -280,9 +303,26 @@ async function getAuthorizedCalendar(userId) {
 }
 
 async function getScheduleGroupForUser(user, groupId) {
-  if (user?.role === 'teacher' || user?.role === 'admin') {
+  if (user?.role === 'admin') {
     if (groupId) return findGroupById(groupId);
-    const groups = await getTeacherGroups();
+    const groups = await getTeacherGroups(user);
+    return groups[0] || null;
+  }
+
+  if (user?.role === 'teacher') {
+    if (groupId) {
+      const result = await pool.query(
+        `SELECT cg.id, cg.name, cg.course_code, cg.days_key, cg.times_key, cg.meet_link, cg.meet_space_name,
+                cg.teacher_id, teacher.name AS teacher_name, teacher.email AS teacher_email
+         FROM course_groups cg
+         LEFT JOIN users teacher ON teacher.id = cg.teacher_id
+         WHERE cg.id = $1 AND cg.teacher_id = $2
+         LIMIT 1`,
+        [groupId, user.id]
+      );
+      return result.rows[0] || null;
+    }
+    const groups = await getTeacherGroups(user);
     return groups[0] || null;
   }
 
@@ -312,6 +352,10 @@ function normalizeEventTitle(value, fallback = 'Speaking lesson') {
   return raw;
 }
 
+function canManageClass(user) {
+  return user?.role === 'teacher' || user?.role === 'admin';
+}
+
 router.get('/next', requireAuth, async (req, res, next) => {
   try {
     const userId = req.session.userId;
@@ -320,11 +364,18 @@ router.get('/next', requireAuth, async (req, res, next) => {
     const safeGroupId = Number.isInteger(requestedGroupId) && requestedGroupId > 0 ? requestedGroupId : null;
 
     let row = null;
-    if (user?.role === 'teacher') {
+    if (user?.role === 'admin') {
       if (safeGroupId) {
         row = await findGroupById(safeGroupId);
       } else {
-        const groups = await getTeacherGroups();
+        const groups = await getTeacherGroups(user);
+        row = groups[0] || null;
+      }
+    } else if (user?.role === 'teacher') {
+      if (safeGroupId) {
+        row = await getScheduleGroupForUser(user, safeGroupId);
+      } else {
+        const groups = await getTeacherGroups(user);
         row = groups[0] || null;
       }
     } else {
@@ -348,7 +399,9 @@ router.get('/next', requireAuth, async (req, res, next) => {
     res.json({
       groupName: row.name,
       courseCode: String(row.course_code || '').toUpperCase(),
-      studentName: row.user_name || user?.name || 'Teacher',
+      studentName: row.user_name || user?.name || (user?.role === 'admin' ? 'Admin' : 'Teacher'),
+      teacherName: row.teacher_name || '',
+      teacherEmail: row.teacher_email || '',
       groupId: row.id,
       meetLink: row.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/',
       lesson: {
@@ -369,13 +422,15 @@ router.get('/groups', requireAuth, async (req, res, next) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (user.role === 'teacher') {
-      const groups = await getTeacherGroups();
+    if (user.role === 'teacher' || user.role === 'admin') {
+      const groups = await getTeacherGroups(user);
       return res.json({
         groups: groups.map((row) => ({
           id: row.id,
           name: row.name,
           courseCode: String(row.course_code || '').toUpperCase(),
+          teacherName: row.teacher_name || '',
+          teacherEmail: row.teacher_email || '',
           meetLink: row.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/',
         })),
       });
@@ -389,6 +444,8 @@ router.get('/groups', requireAuth, async (req, res, next) => {
           id: assigned.id,
           name: assigned.name,
           courseCode: String(assigned.course_code || '').toUpperCase(),
+          teacherName: assigned.teacher_name || '',
+          teacherEmail: assigned.teacher_email || '',
           meetLink: assigned.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/',
         },
       ],
@@ -402,8 +459,8 @@ router.put('/meet-link', requireAuth, async (req, res, next) => {
   try {
     const userId = req.session.userId;
     const user = await getUserById(userId);
-    if (!user || user.role !== 'teacher') {
-      return res.status(403).json({ error: 'Лише викладач може змінювати посилання Google Meet.' });
+    if (!canManageClass(user)) {
+      return res.status(403).json({ error: 'Лише викладач або адміністратор може змінювати посилання Google Meet.' });
     }
 
     const { meetLink, groupName, groupId } = req.body || {};
@@ -420,15 +477,16 @@ router.put('/meet-link', requireAuth, async (req, res, next) => {
 
     const requestedGroupId = Number(groupId);
     let group = Number.isInteger(requestedGroupId) && requestedGroupId > 0
-      ? await findGroupById(requestedGroupId)
-      : await findLatestGroupByUser(userId);
+      ? await getScheduleGroupForUser(user, requestedGroupId)
+      : await getScheduleGroupForUser(user, null);
     if (!group && safeGroupName) {
       const byNameResult = await pool.query(
         `SELECT id, name, course_code, days_key, times_key, meet_link, meet_space_name
          FROM course_groups
          WHERE name = $1
+           AND ($2::text = 'admin' OR teacher_id = $3)
          LIMIT 1`,
-        [safeGroupName]
+        [safeGroupName, user.role, user.id]
       );
       group = byNameResult.rows[0] || null;
     }
@@ -492,6 +550,8 @@ router.get('/schedule', requireAuth, async (req, res, next) => {
         id: group.id,
         name: group.name,
         courseCode: String(group.course_code || '').toUpperCase(),
+        teacherName: group.teacher_name || '',
+        teacherEmail: group.teacher_email || '',
         daysKey: group.days_key,
         timesKey: group.times_key,
         meetLink: group.meet_link || process.env.DEFAULT_MEET_LINK || 'https://meet.google.com/',
@@ -1054,8 +1114,8 @@ router.post('/materials', requireAuth, handleMaterialUpload, async (req, res, ne
     await ensureClassMaterialsTable();
     const userId = req.session.userId;
     const user = await getUserById(userId);
-    if (!user || user.role !== 'teacher') {
-      return res.status(403).json({ error: `Лише викладач може додавати матеріали. Поточна роль: ${user?.role || 'unknown'}.` });
+    if (!canManageClass(user)) {
+      return res.status(403).json({ error: `Лише викладач або адміністратор може додавати матеріали. Поточна роль: ${user?.role || 'unknown'}.` });
     }
 
     const title = String(req.body?.title || '').trim();
@@ -1109,8 +1169,8 @@ router.delete('/materials/:id', requireAuth, async (req, res, next) => {
 
     const material = found.rows[0];
     const isOwner = Number(material.user_id) === Number(userId);
-    const isTeacher = user?.role === 'teacher';
-    if (!isOwner && !isTeacher) {
+    const canManage = canManageClass(user);
+    if (!isOwner && !canManage) {
       return res.status(403).json({ error: 'Недостатньо прав для видалення матеріалу.' });
     }
 
@@ -1148,8 +1208,8 @@ router.post('/homeworks', requireAuth, handleMaterialUpload, async (req, res, ne
     await ensureClassHomeworksTable();
     const userId = req.session.userId;
     const user = await getUserById(userId);
-    if (!user || user.role !== 'teacher') {
-      return res.status(403).json({ error: `Лише викладач може додавати домашні завдання. Поточна роль: ${user?.role || 'unknown'}.` });
+    if (!canManageClass(user)) {
+      return res.status(403).json({ error: `Лише викладач або адміністратор може додавати домашні завдання. Поточна роль: ${user?.role || 'unknown'}.` });
     }
 
     const title = String(req.body?.title || '').trim();
@@ -1204,8 +1264,8 @@ router.delete('/homeworks/:id', requireAuth, async (req, res, next) => {
 
     const homework = found.rows[0];
     const isOwner = Number(homework.user_id) === Number(userId);
-    const isTeacher = user?.role === 'teacher';
-    if (!isOwner && !isTeacher) {
+    const canManage = canManageClass(user);
+    if (!isOwner && !canManage) {
       return res.status(403).json({ error: 'Недостатньо прав для видалення домашнього завдання.' });
     }
 
@@ -1223,7 +1283,3 @@ router.delete('/homeworks/:id', requireAuth, async (req, res, next) => {
   }
 });
 module.exports = router;
-
-
-
-

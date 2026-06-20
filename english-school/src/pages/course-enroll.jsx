@@ -46,6 +46,7 @@ function CourseEnroll() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [teacherName, setTeacherName] = useState("");
 
   const apiBase = getApiBase();
 
@@ -105,6 +106,7 @@ function CourseEnroll() {
   const resetForm = () => {
     setDone(false);
     setGroupName("");
+    setTeacherName("");
     setFullName("");
     setPhone("");
     setEmail("");
@@ -173,7 +175,8 @@ function CourseEnroll() {
         throw new Error(payload?.error || t("enroll.errors.submit"));
       }
 
-      setGroupName(payload?.group?.name || "");
+      setGroupName(payload?.pendingGroup?.name || payload?.group?.name || "");
+      setTeacherName(payload?.pendingGroup?.teacherName || payload?.teacher?.name || "");
       setDone(true);
       try {
         localStorage.removeItem(storageKey);
@@ -263,14 +266,22 @@ function CourseEnroll() {
                         </strong>
                       </>
                     ) : null}
+                    {teacherName ? (
+                      <>
+                        {" "}
+                        <strong className="enroll-group-name">
+                          {t("classPage.teacher")}: {teacherName}
+                        </strong>
+                      </>
+                    ) : null}
                   </p>
                   <div className="enroll-done-actions">
                     <button className="btn btn-accent" type="button" onClick={() => navigate("/courses")}>
                       {t("enroll.return")}
                     </button>
-                    <button className="btn btn-outline" type="button" onClick={resetForm}>
+                    {/* <button className="btn btn-outline" type="button" onClick={resetForm}>
                       {t("enroll.newRequest")}
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               ) : (
