@@ -361,12 +361,11 @@ function ClassPage() {
   const teacherName = classData?.teacherName || (language === "ua" ? "Викладача не призначено" : "No teacher assigned");
   const hasRealMeetLink = Boolean(meetLink && meetLink.startsWith("https://meet.google.com/") && meetLink.length > 24);
 
-  const handleJoinMeet = () => {
+  const handleJoinMeet = (event) => {
     if (!hasRealMeetLink) {
+      event.preventDefault();
       setError(t("classPage.errors.noMeet"));
-      return;
     }
-    window.open(meetLink, "_blank", "noopener,noreferrer");
   };
 
   const handleSaveMeetLink = async () => {
@@ -842,9 +841,15 @@ function ClassPage() {
                   </button>
                 </div>
               )}
-              <button className="class-meet-btn" type="button" onClick={handleJoinMeet}>
+              <a
+                className={`class-meet-btn ${hasRealMeetLink ? "" : "is-disabled"}`}
+                href={hasRealMeetLink ? meetLink : "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleJoinMeet}
+              >
                 {t("classPage.join")}
-              </button>
+              </a>
             </div>
 
             <p className="class-link-line">{t("classPage.meetLink", { link: meetLink })}</p>

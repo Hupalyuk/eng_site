@@ -2359,7 +2359,8 @@ textarea {
   border: 0;
 }
 
-.class-meet-btn:disabled {
+.class-meet-btn:disabled,
+.class-meet-btn.is-disabled {
   opacity: 0.65;
 }
 
