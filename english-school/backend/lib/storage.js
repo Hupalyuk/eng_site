@@ -3,9 +3,9 @@ const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
 const uploadsDir = path.join(__dirname, '..', 'uploads');
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseBucket = process.env.SUPABASE_BUCKET || 'uploads';
+const supabaseUrl = String(process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+const supabaseServiceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const supabaseBucket = String(process.env.SUPABASE_BUCKET || 'uploads').trim().replace(/^\/+|\/+$/g, '');
 
 const supabase =
   supabaseUrl && supabaseServiceKey
@@ -21,6 +21,12 @@ function isSupabaseStorageEnabled() {
   return Boolean(supabase);
 }
 
+function assertValidSupabaseBucket() {
+  if (!supabaseBucket || supabaseBucket.includes('/') || /^https?:\/\//i.test(supabaseBucket)) {
+    throw new Error('Invalid SUPABASE_BUCKET. Use only the bucket name, for example "uploads", not a URL or path.');
+  }
+}
+
 function safeExtension(fileName = '') {
   return path.extname(fileName).toLowerCase().replace(/[^a-z0-9.]/g, '');
 }
@@ -29,14 +35,17 @@ function makeStoragePath(folder, fileName) {
   const ext = safeExtension(fileName);
   const safeFolder = String(folder || 'uploads')
     .replace(/^\/+|\/+$/g, '')
-    .replace(/[^a-zA-Z0-9/_-]/g, '-');
-  return `${safeFolder}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    .replace(/[^a-zA-Z0-9/_-]/g, '-')
+    .replace(/\/+/g, '/');
+  const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext || '.bin'}`;
+  return `${safeFolder || 'uploads'}/${safeName}`;
 }
 
 async function saveUploadedFile(file, { folder = 'uploads' } = {}) {
   if (!file) return null;
 
   if (supabase) {
+    assertValidSupabaseBucket();
     const storagePath = makeStoragePath(folder, file.originalname);
     const { error } = await supabase.storage.from(supabaseBucket).upload(storagePath, file.buffer, {
       contentType: file.mimetype || 'application/octet-stream',
@@ -44,7 +53,9 @@ async function saveUploadedFile(file, { folder = 'uploads' } = {}) {
     });
 
     if (error) {
-      throw new Error(error.message || 'Could not upload file to Supabase Storage.');
+      throw new Error(
+        `Could not upload file to Supabase Storage. Bucket: "${supabaseBucket}", path: "${storagePath}". ${error.message || ''}`.trim()
+      );
     }
 
     const { data } = supabase.storage.from(supabaseBucket).getPublicUrl(storagePath);
