@@ -1,26 +1,13 @@
-const path = require('path');
 const express = require('express');
 const multer = require('multer');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { deleteStoredFile, saveUploadedFile } = require('../lib/storage');
 
 const router = express.Router();
 
-const uploadDir = path.join(__dirname, '..', 'uploads');
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safeName = `post-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-    cb(null, safeName);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
@@ -53,7 +40,8 @@ router.post('/', requireAuth, upload.single('image'), async (req, res, next) => 
       return res.status(400).json({ error: 'Content is required.' });
     }
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const storedImage = req.file ? await saveUploadedFile(req.file, { folder: 'posts' }) : null;
+    const imageUrl = storedImage?.url || null;
 
     const insertResult = await pool.query(
       'INSERT INTO posts (user_id, content, image_url) VALUES ($1, $2, $3) RETURNING id',
@@ -102,13 +90,13 @@ router.put('/:id', requireAuth, upload.single('image'), async (req, res, next) =
     const shouldRemoveImage =
       !req.file && (removeImage === true || removeImage === 'true' || removeImage === '1');
 
-    const imageUrl = req.file
-      ? `/uploads/${req.file.filename}`
-      : shouldRemoveImage
-        ? null
-        : postResult.rows[0].image_url;
+    const storedImage = req.file ? await saveUploadedFile(req.file, { folder: 'posts' }) : null;
+    const imageUrl = storedImage?.url || (shouldRemoveImage ? null : postResult.rows[0].image_url);
 
     await pool.query('UPDATE posts SET content = $1, image_url = $2 WHERE id = $3', [content.trim(), imageUrl, postId]);
+    if (req.file || shouldRemoveImage) {
+      await deleteStoredFile(postResult.rows[0].image_url);
+    }
 
     const updatedResult = await pool.query(
       `SELECT p.id, p.content, p.image_url, p.created_at, u.id AS user_id, u.name AS user_name
@@ -132,7 +120,7 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid post id.' });
     }
 
-    const postResult = await pool.query('SELECT id, user_id FROM posts WHERE id = $1 LIMIT 1', [postId]);
+    const postResult = await pool.query('SELECT id, user_id, image_url FROM posts WHERE id = $1 LIMIT 1', [postId]);
 
     if (postResult.rows.length === 0) {
       return res.status(404).json({ error: 'Post not found.' });
@@ -143,6 +131,7 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
     }
 
     await pool.query('DELETE FROM posts WHERE id = $1', [postId]);
+    await deleteStoredFile(postResult.rows[0].image_url);
     res.json({ ok: true });
   } catch (error) {
     next(error);

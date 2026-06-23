@@ -7,12 +7,16 @@
    - `PGSSLMODE=require`
 3. For local Postgres (without Supabase), set:
    - `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGPORT`
-4. For Google Calendar OAuth, set:
+4. For Supabase Storage buckets, set:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SUPABASE_BUCKET` (defaults to `uploads`)
+5. For Google Calendar OAuth, set:
    - `GOOGLE_CLIENT_ID`
    - `GOOGLE_CLIENT_SECRET`
    - `GOOGLE_REDIRECT_URI` (example: `https://your-backend.onrender.com/api/google/callback`)
    - `FRONTEND_ORIGIN` (where user returns after connect, can be comma-separated)
-5. Create the tables:
+6. Create the tables:
    ```sql
    -- run schema.sql inside your Postgres DB
    \i schema.sql
@@ -35,6 +39,8 @@
 
 ## Notes
 - Sessions are stored in PostgreSQL via `connect-pg-simple`.
+- Uploaded files use Supabase Storage when `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set. The bucket should be public if the app stores public file URLs.
+- If Supabase Storage is not configured, uploads fall back to `backend/uploads` for local development.
 - Cookies are `httpOnly`, `sameSite=lax`, and `secure` in production.
 - CORS allows `FRONTEND_ORIGIN` with credentials.
 - If `DATABASE_URL` is provided, backend connects through it first.

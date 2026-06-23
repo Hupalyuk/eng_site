@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
+import { resolveAssetUrl } from "../lib/assetUrl.js";
 
 const splitPostText = (text = "") => {
   const normalized = String(text).replace(/\r\n/g, "\n");
@@ -47,11 +48,7 @@ const EditPost = () => {
   };
 
   const resolveImageUrl = useCallback(
-    (url) => {
-      if (!url) return "";
-      if (url.startsWith("http://") || url.startsWith("https://")) return url;
-      return `${apiBase}${url}`;
-    },
+    (url) => resolveAssetUrl(url, apiBase),
     [apiBase]
   );
 

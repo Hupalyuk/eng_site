@@ -132,9 +132,10 @@ npm start
 ```text
 english-school
 |-- backend
+|   |-- lib
 |   |-- middleware
 |   |-- routes
-|   |-- uploads
+|   |-- uploads (local fallback only)
 |   |-- db.js
 |   |-- schema.sql
 |   `-- server.js

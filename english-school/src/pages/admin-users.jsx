@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getApiBase } from "../lib/apiBase.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { resolveAssetUrl } from "../lib/assetUrl.js";
 
 const ROLES = ["all", "admin", "teacher", "student"];
 const TEACHER_STATUSES = ["all", "none", "pending", "approved", "rejected"];
@@ -277,6 +278,7 @@ export default function AdminUsers() {
   const apiBase = getApiBase();
   const language = i18n.language === "en" ? "en" : "ua";
   const labels = TEXT[language];
+  const resolveFileUrl = (url) => resolveAssetUrl(url, apiBase, "#");
 
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState(null);
@@ -835,7 +837,7 @@ export default function AdminUsers() {
                         <strong>{doc.file_name}</strong>
                         <small>{formatFileSize(doc.file_size)} · {formatDate(doc.created_at, language)}</small>
                       </div>
-                      <a className="btn btn-light btn-sm" href={`${apiBase}${doc.file_url}`} target="_blank" rel="noreferrer">
+                      <a className="btn btn-light btn-sm" href={resolveFileUrl(doc.file_url)} target="_blank" rel="noreferrer">
                         {labels.teachers.open}
                       </a>
                     </li>

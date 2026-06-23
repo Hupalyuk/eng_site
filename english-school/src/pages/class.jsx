@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getApiBase } from "../lib/apiBase.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { resolveAssetUrl } from "../lib/assetUrl.js";
 
 const CLASS_FALLBACK = {
   title: "",
@@ -148,6 +149,7 @@ function ClassPage() {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const apiBase = getApiBase();
+  const resolveFileUrl = (url) => resolveAssetUrl(url, apiBase, "#");
   const [classData, setClassData] = useState(null);
   const [error, setError] = useState("");
   const [now, setNow] = useState(Date.now());
@@ -1052,7 +1054,7 @@ function ClassPage() {
                             <span className="class-file-tag">{ext.slice(0, 4)}</span>
                             <div>
                               <strong>
-                                <a href={`${apiBase}${item.fileUrl}`} target="_blank" rel="noreferrer">
+                                <a href={resolveFileUrl(item.fileUrl)} target="_blank" rel="noreferrer">
                                   {item.title}
                                 </a>
                               </strong>
@@ -1133,7 +1135,7 @@ function ClassPage() {
                     <span className="class-home-icon">{copy.homeworkTag}</span>
                     <div>
                       <strong>
-                        <a href={`${apiBase}${item.fileUrl}`} target="_blank" rel="noreferrer">
+                        <a href={resolveFileUrl(item.fileUrl)} target="_blank" rel="noreferrer">
                           {item.title}
                         </a>
                       </strong>

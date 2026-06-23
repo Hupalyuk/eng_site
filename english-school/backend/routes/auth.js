@@ -1,28 +1,14 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const { pool } = require('../db');
 const { requireAuth, withUser } = require('../middleware/auth');
+const { saveUploadedFile } = require('../lib/storage');
 
 const router = express.Router();
 
-const teacherDocsDir = path.join(__dirname, '..', 'uploads', 'teacher-docs');
-if (!fs.existsSync(teacherDocsDir)) {
-  fs.mkdirSync(teacherDocsDir, { recursive: true });
-}
-
-const teacherDocsStorage = multer.diskStorage({
-  destination: (_, __, cb) => cb(null, teacherDocsDir),
-  filename: (_, file, cb) => {
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, `teacher-${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`);
-  },
-});
-
 const uploadTeacherDocs = multer({
-  storage: teacherDocsStorage,
+  storage: multer.memoryStorage(),
   limits: { files: 5, fileSize: 10 * 1024 * 1024 },
 });
 
@@ -100,12 +86,13 @@ router.post('/register-teacher', uploadTeacherDocs.array('documents', 5), async 
     const user = userResult.rows[0];
 
     for (const file of req.files) {
+      const storedFile = await saveUploadedFile(file, { folder: 'teacher-docs' });
       await pool.query(
         `INSERT INTO teacher_documents (user_id, file_url, file_name, file_mime, file_size)
          VALUES ($1, $2, $3, $4, $5)`,
         [
           user.id,
-          `/uploads/teacher-docs/${file.filename}`,
+          storedFile.url,
           file.originalname,
           file.mimetype,
           file.size,

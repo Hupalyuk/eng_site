@@ -1,28 +1,14 @@
 ﻿const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const multer = require('multer');
 const { google } = require('googleapis');
 const { pool } = require('../db');
 const { requireAuth } = require('../middleware/auth');
+const { deleteStoredFile, saveUploadedFile } = require('../lib/storage');
 
 const router = express.Router();
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const materialStorage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    const safeName = `material-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-    cb(null, safeName);
-  },
-});
 
 const uploadMaterial = multer({
-  storage: materialStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
 });
 
@@ -1127,7 +1113,8 @@ router.post('/materials', requireAuth, handleMaterialUpload, async (req, res, ne
       return res.status(400).json({ error: 'Файл є обовʼязковим.' });
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const storedFile = await saveUploadedFile(req.file, { folder: 'class/materials' });
+    const fileUrl = storedFile.url;
     const inserted = await pool.query(
       `INSERT INTO class_materials (user_id, title, file_url, file_name, file_mime, file_size)
        VALUES ($1, $2, $3, $4, $5, $6)
@@ -1176,11 +1163,7 @@ router.delete('/materials/:id', requireAuth, async (req, res, next) => {
 
     await pool.query('DELETE FROM class_materials WHERE id = $1', [materialId]);
 
-    const relative = String(material.file_url || '').replace(/^\/+/, '');
-    if (relative) {
-      const absPath = path.join(__dirname, '..', relative);
-      fs.unlink(absPath, () => {});
-    }
+    await deleteStoredFile(material.file_url);
 
     res.json({ ok: true });
   } catch (error) {
@@ -1222,7 +1205,8 @@ router.post('/homeworks', requireAuth, handleMaterialUpload, async (req, res, ne
       return res.status(400).json({ error: 'Файл є обовʼязковим.' });
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const storedFile = await saveUploadedFile(req.file, { folder: 'class/homeworks' });
+    const fileUrl = storedFile.url;
     const inserted = await pool.query(
       `INSERT INTO class_homeworks (user_id, title, due_text, file_url, file_name, file_mime, file_size)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -1271,11 +1255,7 @@ router.delete('/homeworks/:id', requireAuth, async (req, res, next) => {
 
     await pool.query('DELETE FROM class_homeworks WHERE id = $1', [homeworkId]);
 
-    const relative = String(homework.file_url || '').replace(/^\/+/, '');
-    if (relative) {
-      const absPath = path.join(__dirname, '..', relative);
-      fs.unlink(absPath, () => {});
-    }
+    await deleteStoredFile(homework.file_url);
 
     res.json({ ok: true });
   } catch (error) {

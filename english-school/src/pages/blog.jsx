@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApiBase } from "../lib/apiBase.js";
+import { resolveAssetUrl } from "../lib/assetUrl.js";
 
 const Blog = () => {
   const { user } = useAuth();
@@ -43,14 +44,6 @@ const Blog = () => {
   useEffect(() => {
     loadPosts();
   }, []);
-
-  const resolveImageUrl = (url) => {
-    if (!url) return null;
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      return url;
-    }
-    return `${apiBase}${url}`;
-  };
 
   const deletePost = async (postId) => {
     setError("");
@@ -136,7 +129,7 @@ const Blog = () => {
         ) : (
           <div className="post-list">
             {posts.map((post) => {
-              const imageUrl = resolveImageUrl(post.image_url);
+              const imageUrl = resolveAssetUrl(post.image_url, apiBase, null);
               const title = getTitle(post.content);
               const excerpt = getExcerpt(post.content);
               const initials = getInitials(post.user_name);
