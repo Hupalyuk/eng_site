@@ -814,7 +814,7 @@ h1 {
   color: #ffffff;
   padding: 12px 24px;
   top: 0;
-  z-index: 20;
+  /* z-index: 20; */
 }
 
 .home-hero-body,
@@ -854,6 +854,7 @@ h1 {
 }
 
 .language-switch {
+  width: max-content;
   display: flex;
   gap: 6px;
   background: rgba(255, 255, 255, 0.12);
@@ -927,7 +928,9 @@ h1 {
 }
 
 .mobile-actions {
+  max-width: fit-content;
   display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
@@ -1178,7 +1181,7 @@ textarea {
 }
 
 .blog-feed {
-  max-width: 1080px;
+  /* max-width: 1080px; */
   margin: 40px auto 80px;
   padding: 0 20px;
 }
