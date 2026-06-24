@@ -8,16 +8,16 @@ function About() {
   const staticTeachers = [
     {
       id: 1,
-      name: "Анна Коваль",
+      name: "Богдана Стонога",
       role: "Senior English Teacher",
-      certification_level: "C1",
-      experience_years: 5,
+      certification_level: "C4",
+      experience_years: 67,
       specialties: "General English, Speaking",
       avatar: "/images/teachers/anna.png",
     },
     {
       id: 2,
-      name: "Олег Бондар",
+      name: "ВладиСлейв Євчук",
       role: "IELTS Tutor",
       certification_level: "C2",
       experience_years: 8,
@@ -26,7 +26,7 @@ function About() {
     },
     {
       id: 3,
-      name: "Марія Шевчук",
+      name: "Назар Лубешко",
       role: "Speaking Coach",
       certification_level: "C1",
       experience_years: 6,
@@ -35,7 +35,7 @@ function About() {
     },
     {
       id: 4,
-      name: "Дмитро Луценко",
+      name: "РостиСлейв Іваськевич",
       role: "Business English Coach",
       certification_level: "C1",
       experience_years: 7,
