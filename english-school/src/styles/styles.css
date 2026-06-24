@@ -2774,6 +2774,8 @@ textarea {
 }
 
 .class-list {
+  max-height: 565px;
+  overflow-y: auto;
   list-style: none;
   padding: 0;
   margin: 0;
@@ -3232,6 +3234,8 @@ textarea {
 }
 
 .class-material-day {
+  overflow-y: auto;
+  max-height: 565px;
   border: 1px solid #efeaf8;
   border-radius: 12px;
   padding: 10px;

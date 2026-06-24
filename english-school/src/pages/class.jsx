@@ -246,7 +246,8 @@ function ClassPage() {
     const loadHomeworks = async () => {
       try {
         setHomeworksLoading(true);
-        const response = await fetch(`${apiBase}/api/class/homeworks`, { credentials: "include" });
+        const groupQuery = canManageClass && selectedGroupId ? `?groupId=${encodeURIComponent(selectedGroupId)}` : "";
+        const response = await fetch(`${apiBase}/api/class/homeworks${groupQuery}`, { credentials: "include" });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload?.error || t("classPage.errors.loadHomeworks"));
         setHomeworks(Array.isArray(payload?.homeworks) ? payload.homeworks : []);
@@ -257,14 +258,15 @@ function ClassPage() {
       }
     };
     loadHomeworks();
-  }, [apiBase, user]);
+  }, [apiBase, user, canManageClass, selectedGroupId]);
 
   useEffect(() => {
     if (!user) return;
     const loadMaterials = async () => {
       try {
         setMaterialsLoading(true);
-        const response = await fetch(`${apiBase}/api/class/materials`, { credentials: "include" });
+        const groupQuery = canManageClass && selectedGroupId ? `?groupId=${encodeURIComponent(selectedGroupId)}` : "";
+        const response = await fetch(`${apiBase}/api/class/materials${groupQuery}`, { credentials: "include" });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload?.error || t("classPage.errors.loadMaterials"));
         setMaterials(Array.isArray(payload?.materials) ? payload.materials : []);
@@ -275,7 +277,7 @@ function ClassPage() {
       }
     };
     loadMaterials();
-  }, [apiBase, user]);
+  }, [apiBase, user, canManageClass, selectedGroupId]);
 
   useEffect(() => {
     if (!user) return;
@@ -602,6 +604,9 @@ function ClassPage() {
       const form = new FormData();
       form.append("title", materialTitle.trim());
       form.append("file", materialFile);
+      if (canManageClass && selectedGroupId) {
+        form.append("groupId", selectedGroupId);
+      }
 
       const response = await fetch(`${apiBase}/api/class/materials`, {
         method: "POST",
@@ -655,6 +660,9 @@ function ClassPage() {
       form.append("title", homeworkTitle.trim());
       form.append("dueText", homeworkDue.trim());
       form.append("file", homeworkFile);
+      if (canManageClass && selectedGroupId) {
+        form.append("groupId", selectedGroupId);
+      }
 
       const response = await fetch(`${apiBase}/api/class/homeworks`, {
         method: "POST",

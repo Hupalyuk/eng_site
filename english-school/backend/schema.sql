@@ -91,6 +91,37 @@ CREATE TABLE IF NOT EXISTS schedule_google_events (
 CREATE INDEX IF NOT EXISTS idx_schedule_google_events_user_group
 ON schedule_google_events (user_id, group_id, lesson_start);
 
+CREATE TABLE IF NOT EXISTS class_materials (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  group_id BIGINT REFERENCES course_groups(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  file_url TEXT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_mime VARCHAR(190),
+  file_size BIGINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_class_materials_group_created
+ON class_materials (group_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS class_homeworks (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  group_id BIGINT REFERENCES course_groups(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  due_text VARCHAR(255),
+  file_url TEXT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_mime VARCHAR(190),
+  file_size BIGINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_class_homeworks_group_created
+ON class_homeworks (group_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS admin_audit_logs (
   id BIGSERIAL PRIMARY KEY,
   admin_id BIGINT REFERENCES users(id) ON DELETE SET NULL,

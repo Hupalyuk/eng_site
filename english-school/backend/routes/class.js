@@ -1024,6 +1024,8 @@ function toMaterialPayload(row) {
   return {
     id: row.id,
     userId: Number(row.user_id || 0),
+    groupId: Number(row.group_id || 0),
+    groupName: row.group_name || '',
     title: row.title,
     fileUrl: row.file_url,
     fileName: row.file_name,
@@ -1038,6 +1040,8 @@ function toHomeworkPayload(row) {
   return {
     id: row.id,
     userId: Number(row.user_id || 0),
+    groupId: Number(row.group_id || 0),
+    groupName: row.group_name || '',
     title: row.title,
     dueText: row.due_text || '',
     fileUrl: row.file_url,
@@ -1054,6 +1058,7 @@ async function ensureClassMaterialsTable() {
     CREATE TABLE IF NOT EXISTS class_materials (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      group_id BIGINT REFERENCES course_groups(id) ON DELETE CASCADE,
       title VARCHAR(255) NOT NULL,
       file_url TEXT NOT NULL,
       file_name VARCHAR(255) NOT NULL,
@@ -1062,6 +1067,14 @@ async function ensureClassMaterialsTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  await pool.query(`
+    ALTER TABLE class_materials
+    ADD COLUMN IF NOT EXISTS group_id BIGINT REFERENCES course_groups(id) ON DELETE CASCADE;
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_class_materials_group_created
+    ON class_materials (group_id, created_at DESC);
+  `);
 }
 
 async function ensureClassHomeworksTable() {
@@ -1069,6 +1082,7 @@ async function ensureClassHomeworksTable() {
     CREATE TABLE IF NOT EXISTS class_homeworks (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      group_id BIGINT REFERENCES course_groups(id) ON DELETE CASCADE,
       title VARCHAR(255) NOT NULL,
       due_text VARCHAR(255),
       file_url TEXT NOT NULL,
@@ -1078,16 +1092,37 @@ async function ensureClassHomeworksTable() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+  await pool.query(`
+    ALTER TABLE class_homeworks
+    ADD COLUMN IF NOT EXISTS group_id BIGINT REFERENCES course_groups(id) ON DELETE CASCADE;
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_class_homeworks_group_created
+    ON class_homeworks (group_id, created_at DESC);
+  `);
+}
+
+async function getClassContentGroup(req, user) {
+  const requestedGroupId = Number(req.query?.groupId || req.body?.groupId);
+  const groupId = Number.isInteger(requestedGroupId) && requestedGroupId > 0 ? requestedGroupId : null;
+  return getScheduleGroupForUser(user, groupId);
 }
 
 router.get('/materials', requireAuth, async (req, res, next) => {
   try {
     await ensureClassMaterialsTable();
+    const user = await getUserById(req.session.userId);
+    const group = await getClassContentGroup(req, user);
+    if (!group) return res.json({ materials: [] });
+
     const result = await pool.query(
-      `SELECT cm.id, cm.user_id, cm.title, cm.file_url, cm.file_name, cm.file_mime, cm.file_size, cm.created_at, u.name AS user_name
+      `SELECT cm.id, cm.user_id, cm.group_id, cg.name AS group_name, cm.title, cm.file_url, cm.file_name, cm.file_mime, cm.file_size, cm.created_at, u.name AS user_name
        FROM class_materials cm
        JOIN users u ON u.id = cm.user_id
-       ORDER BY cm.created_at DESC, cm.id DESC`
+       JOIN course_groups cg ON cg.id = cm.group_id
+       WHERE cm.group_id = $1
+       ORDER BY cm.created_at DESC, cm.id DESC`,
+      [group.id]
     );
     res.json({ materials: result.rows.map(toMaterialPayload) });
   } catch (error) {
@@ -1103,6 +1138,10 @@ router.post('/materials', requireAuth, handleMaterialUpload, async (req, res, ne
     if (!canManageClass(user)) {
       return res.status(403).json({ error: `Лише викладач або адміністратор може додавати матеріали. Поточна роль: ${user?.role || 'unknown'}.` });
     }
+    const group = await getClassContentGroup(req, user);
+    if (!group) {
+      return res.status(404).json({ error: 'Групу для матеріалу не знайдено.' });
+    }
 
     const title = String(req.body?.title || '').trim();
     if (!title) {
@@ -1116,15 +1155,16 @@ router.post('/materials', requireAuth, handleMaterialUpload, async (req, res, ne
     const storedFile = await saveUploadedFile(req.file, { folder: 'class/materials' });
     const fileUrl = storedFile.url;
     const inserted = await pool.query(
-      `INSERT INTO class_materials (user_id, title, file_url, file_name, file_mime, file_size)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, user_id, title, file_url, file_name, file_mime, file_size, created_at`,
-      [userId, title, fileUrl, req.file.originalname, req.file.mimetype || null, req.file.size || null]
+      `INSERT INTO class_materials (user_id, group_id, title, file_url, file_name, file_mime, file_size)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, user_id, group_id, title, file_url, file_name, file_mime, file_size, created_at`,
+      [userId, group.id, title, fileUrl, req.file.originalname, req.file.mimetype || null, req.file.size || null]
     );
 
     res.status(201).json({
       material: toMaterialPayload({
         ...inserted.rows[0],
+        group_name: group.name,
         user_name: user.name,
       }),
     });
@@ -1144,7 +1184,7 @@ router.delete('/materials/:id', requireAuth, async (req, res, next) => {
     const userId = req.session.userId;
     const user = await getUserById(userId);
     const found = await pool.query(
-      `SELECT id, user_id, file_url
+      `SELECT id, user_id, group_id, file_url
        FROM class_materials
        WHERE id = $1
        LIMIT 1`,
@@ -1156,7 +1196,8 @@ router.delete('/materials/:id', requireAuth, async (req, res, next) => {
 
     const material = found.rows[0];
     const isOwner = Number(material.user_id) === Number(userId);
-    const canManage = canManageClass(user);
+    const group = material.group_id ? await getScheduleGroupForUser(user, Number(material.group_id)) : null;
+    const canManage = user?.role === 'admin' || Boolean(group);
     if (!isOwner && !canManage) {
       return res.status(403).json({ error: 'Недостатньо прав для видалення матеріалу.' });
     }
@@ -1174,11 +1215,18 @@ router.delete('/materials/:id', requireAuth, async (req, res, next) => {
 router.get('/homeworks', requireAuth, async (req, res, next) => {
   try {
     await ensureClassHomeworksTable();
+    const user = await getUserById(req.session.userId);
+    const group = await getClassContentGroup(req, user);
+    if (!group) return res.json({ homeworks: [] });
+
     const result = await pool.query(
-      `SELECT ch.id, ch.user_id, ch.title, ch.due_text, ch.file_url, ch.file_name, ch.file_mime, ch.file_size, ch.created_at, u.name AS user_name
+      `SELECT ch.id, ch.user_id, ch.group_id, cg.name AS group_name, ch.title, ch.due_text, ch.file_url, ch.file_name, ch.file_mime, ch.file_size, ch.created_at, u.name AS user_name
        FROM class_homeworks ch
        JOIN users u ON u.id = ch.user_id
-       ORDER BY ch.created_at DESC, ch.id DESC`
+       JOIN course_groups cg ON cg.id = ch.group_id
+       WHERE ch.group_id = $1
+       ORDER BY ch.created_at DESC, ch.id DESC`,
+      [group.id]
     );
     res.json({ homeworks: result.rows.map(toHomeworkPayload) });
   } catch (error) {
@@ -1194,6 +1242,10 @@ router.post('/homeworks', requireAuth, handleMaterialUpload, async (req, res, ne
     if (!canManageClass(user)) {
       return res.status(403).json({ error: `Лише викладач або адміністратор може додавати домашні завдання. Поточна роль: ${user?.role || 'unknown'}.` });
     }
+    const group = await getClassContentGroup(req, user);
+    if (!group) {
+      return res.status(404).json({ error: 'Групу для домашнього завдання не знайдено.' });
+    }
 
     const title = String(req.body?.title || '').trim();
     const dueText = String(req.body?.dueText || '').trim();
@@ -1208,15 +1260,16 @@ router.post('/homeworks', requireAuth, handleMaterialUpload, async (req, res, ne
     const storedFile = await saveUploadedFile(req.file, { folder: 'class/homeworks' });
     const fileUrl = storedFile.url;
     const inserted = await pool.query(
-      `INSERT INTO class_homeworks (user_id, title, due_text, file_url, file_name, file_mime, file_size)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, user_id, title, due_text, file_url, file_name, file_mime, file_size, created_at`,
-      [userId, title, dueText || null, fileUrl, req.file.originalname, req.file.mimetype || null, req.file.size || null]
+      `INSERT INTO class_homeworks (user_id, group_id, title, due_text, file_url, file_name, file_mime, file_size)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, user_id, group_id, title, due_text, file_url, file_name, file_mime, file_size, created_at`,
+      [userId, group.id, title, dueText || null, fileUrl, req.file.originalname, req.file.mimetype || null, req.file.size || null]
     );
 
     res.status(201).json({
       homework: toHomeworkPayload({
         ...inserted.rows[0],
+        group_name: group.name,
         user_name: user.name,
       }),
     });
@@ -1236,7 +1289,7 @@ router.delete('/homeworks/:id', requireAuth, async (req, res, next) => {
     const userId = req.session.userId;
     const user = await getUserById(userId);
     const found = await pool.query(
-      `SELECT id, user_id, file_url
+      `SELECT id, user_id, group_id, file_url
        FROM class_homeworks
        WHERE id = $1
        LIMIT 1`,
@@ -1248,7 +1301,8 @@ router.delete('/homeworks/:id', requireAuth, async (req, res, next) => {
 
     const homework = found.rows[0];
     const isOwner = Number(homework.user_id) === Number(userId);
-    const canManage = canManageClass(user);
+    const group = homework.group_id ? await getScheduleGroupForUser(user, Number(homework.group_id)) : null;
+    const canManage = user?.role === 'admin' || Boolean(group);
     if (!isOwner && !canManage) {
       return res.status(403).json({ error: 'Недостатньо прав для видалення домашнього завдання.' });
     }

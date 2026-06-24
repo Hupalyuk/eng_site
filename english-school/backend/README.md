@@ -14,8 +14,18 @@
 5. For Google Calendar OAuth, set:
    - `GOOGLE_CLIENT_ID`
    - `GOOGLE_CLIENT_SECRET`
-   - `GOOGLE_REDIRECT_URI` (example: `https://your-backend.onrender.com/api/google/callback`)
+   - `GOOGLE_REDIRECT_URI`
    - `FRONTEND_ORIGIN` (where user returns after connect, can be comma-separated)
+
+   If the frontend proxies `/api/*` through Vercel, use the Vercel callback URL:
+
+   ```env
+   GOOGLE_REDIRECT_URI=https://your-vercel-domain.vercel.app/api/google/callback
+   FRONTEND_ORIGIN=https://your-vercel-domain.vercel.app
+   ```
+
+   Add the exact same `GOOGLE_REDIRECT_URI` value to Google Cloud Console under
+   **APIs & Services -> Credentials -> OAuth 2.0 Client -> Authorized redirect URIs**.
 6. Create the tables:
    ```sql
    -- run schema.sql inside your Postgres DB
