@@ -6,6 +6,10 @@ const { deleteStoredFile, saveUploadedFile } = require('../lib/storage');
 
 const router = express.Router();
 
+function sameId(left, right) {
+  return Number(left) === Number(right);
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -83,7 +87,7 @@ router.put('/:id', requireAuth, upload.single('image'), async (req, res, next) =
       return res.status(404).json({ error: 'Post not found.' });
     }
 
-    if (postResult.rows[0].user_id !== req.session.userId) {
+    if (!sameId(postResult.rows[0].user_id, req.session.userId)) {
       return res.status(403).json({ error: 'Forbidden.' });
     }
 
@@ -126,7 +130,7 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
       return res.status(404).json({ error: 'Post not found.' });
     }
 
-    if (postResult.rows[0].user_id !== req.session.userId) {
+    if (!sameId(postResult.rows[0].user_id, req.session.userId)) {
       return res.status(403).json({ error: 'Forbidden.' });
     }
 

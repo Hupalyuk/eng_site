@@ -13,6 +13,8 @@ const splitPostText = (text = "") => {
   return { title, description };
 };
 
+const sameId = (left, right) => Number(left) === Number(right);
+
 const EditPost = () => {
   const { user } = useAuth();
   const { id } = useParams();
@@ -101,12 +103,12 @@ const EditPost = () => {
           throw new Error(payload?.error || t("post.errors.load"));
         }
 
-        const post = Array.isArray(payload) ? payload.find((p) => p.id === postId) : null;
+        const post = Array.isArray(payload) ? payload.find((p) => sameId(p.id, postId)) : null;
         if (!post) {
           throw new Error(t("post.errors.notFound"));
         }
 
-        if (!user || post.user_id !== user.id) {
+        if (!user || !sameId(post.user_id, user.id)) {
           throw new Error(t("post.errors.owner"));
         }
 
