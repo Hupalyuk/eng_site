@@ -177,7 +177,7 @@ function Courses() {
           <div>
             <h2>{t("courses.cta.title")}</h2>
             <p>{t("courses.cta.desc")}</p>
-            <button className="btn btn-light">{t("courses.cta.button")}</button>
+            {/* <button className="btn btn-light">{t("courses.cta.button")}</button> */}
           </div>
           <div className="cta-art" aria-hidden="true">
             <div className="cta-circle"></div>

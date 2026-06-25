@@ -16,7 +16,7 @@ function Home() {
               {t("home.hero.titleEnd")}
             </h1>
             <p className="home-hero-desc">{t("home.hero.desc")}</p>
-            <button className="btn btn-accent">{t("home.hero.cta")}</button>
+            {/* <button className="btn btn-accent">{t("home.hero.cta")}</button> */}
           </div>
           <div className="home-hero-media" aria-hidden="true">
             <div className="home-hero-image">

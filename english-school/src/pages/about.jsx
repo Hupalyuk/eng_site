@@ -20,7 +20,7 @@ function About() {
       name: "ВладиСлейв Євчук",
       role: "IELTS Tutor",
       certification_level: "C2",
-      experience_years: 8,
+      experience_years: 20,
       specialties: "IELTS, Academic English",
       avatar: "/images/teachers/oleg.png",
     },

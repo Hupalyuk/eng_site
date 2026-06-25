@@ -22,13 +22,13 @@ export default function Footer() {
           </p>
         </div>
 
-        <div className="footer-newsletter">
+        {/* <div className="footer-newsletter">
           <h3>{t("footer.newsletterTitle")}</h3>
           <form className="newsletter-form">
             <input type="email" placeholder={t("footer.emailPlaceholder")} />
             <button type="submit">{t("footer.subscribe")}</button>
           </form>
-        </div>
+        </div> */}
 
         <div className="footer-links">
           <a href="/class">{t("nav.class")}</a>
