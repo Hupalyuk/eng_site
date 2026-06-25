@@ -42,15 +42,6 @@ function About() {
       specialties: "Business English, Grammar",
       avatar: "/images/teachers/dmytro.png",
     },
-    // {
-    //   id: 5,
-    //   name: "Ірина Гнатюк",
-    //   role: "Kids English Teacher",
-    //   certification_level: "B2",
-    //   experience_years: 4,
-    //   specialties: "Kids, Phonics",
-    //   avatar: "/images/teachers/irina.png",
-    // },
   ];
 
   const socialLinks = [
